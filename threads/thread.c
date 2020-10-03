@@ -71,6 +71,12 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+// ↓ added for p1.2 priority
+
+static bool thread_priority_greater_than (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
+// ↑ added for p1.2 priority
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -332,7 +338,7 @@ thread_foreach (thread_action_func *func, void *aux)
 }
 
 /* Sets the current thread's **intrinsic** priority to NEW_PRIORITY.
-  设定当前线程的**本征**优先级 */
+   设定当前线程的**本征**优先级 */
 void
 thread_set_priority (int new_priority) 
 {
@@ -500,6 +506,7 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
+    list_sort(&ready_list, thread_priority_greater_than, NULL); // 按表征优先级排序，队头优先级最大，被选中执行
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
@@ -589,3 +596,12 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+/* Return TRUE if a.priority > b.priority. 
+   用于list_sort()和list_insert_ordered()
+   表征优先级比较，高者排在队头 */
+static bool
+thread_priority_greater_than (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+  return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
+}
