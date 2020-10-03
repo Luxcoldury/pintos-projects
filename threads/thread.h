@@ -87,7 +87,8 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
+    int priority;                       /* Priority. xubw: 表征优先级, schedule()以此为排序标准, May change because of donation. */
+    int intrinsic_priority;             /* by xubw for p1.2 : 本征优先级 of the thread, would not change because of donation */
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */

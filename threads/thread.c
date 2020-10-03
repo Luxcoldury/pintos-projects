@@ -331,14 +331,19 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-/* Sets the current thread's priority to NEW_PRIORITY. */
+/* Sets the current thread's **intrinsic** priority to NEW_PRIORITY.
+  设定当前线程的**本征**优先级 */
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+
+  ASSERT (PRI_MIN <= new_priority && new_priority <= PRI_MAX);
+  thread_current ()->intrinsic_priority = new_priority;
+
+  // TODO: 本征优先级改变后，要处理表征优先级，要重新schedule
 }
 
-/* Returns the current thread's priority. */
+/* Returns the current thread's priority. 获取表征优先级 */
 int
 thread_get_priority (void) 
 {
@@ -461,7 +466,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
-  t->priority = priority;
+
+  t->priority = t->intrinsic_priority = priority; // 线程创建时的优先级赋值：指定优先级=本征优先级=表征优先级
+  
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
