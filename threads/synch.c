@@ -118,6 +118,10 @@ sema_up (struct semaphore *sema)
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
   sema->value++;
+
+  // up之后，本来被sema阻塞的高pri线程应该抢占，要reschedule
+  thread_yield ();
+  
   intr_set_level (old_level);
 }
 

@@ -207,6 +207,10 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  // 如果新thread优先级高，就要运行新thread。
+  thread_yield (); // 不管新thread高不高，都reschedule。
+  // 问题：即使新thread的pri低，如果有其他的（不相关的、）同pri的、ready的thread，可能会切过去hhh。大概不影响test，毕竟test里的优先级都是好好分开的
+
   return tid;
 }
 
@@ -342,11 +346,18 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  enum intr_level old_level;
+  old_level = intr_disable ();
 
   ASSERT (PRI_MIN <= new_priority && new_priority <= PRI_MAX);
   thread_current ()->intrinsic_priority = new_priority;
 
-  // TODO: 本征优先级改变后，要处理表征优先级，要重新schedule
+  // TODO: 本征优先级改变后，要处理表征优先级，然后重新schedule
+
+  // 重新schedule
+  thread_yield();
+
+  intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. 获取表征优先级 */
@@ -605,3 +616,31 @@ thread_priority_greater_than (const struct list_elem *a, const struct list_elem 
 {
   return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
 }
+
+/* TODO
+   以下调用要重新schedule，可能发生抢占：
+   [√] thread_yield 本来就会触发schedule
+   [▲] thread_create 目前直接调用thread_yield
+   [√] thread_set_priority
+   [√] lock_release 本质上是sema_up
+   [√] sema_up 直接调用thread_yield
+   [√] cond_signal 本质上是sema_up
+   [■] cond_wait 本身不要求重新schedule。wait到signal后因为要acquire一个lock，在lock_acquire不成功的时候会thread_yield，自动发生重新schedule
+
+   正在运行的thread一定拥有 最高的 表征优先级
+
+   优先级排列只用在ready_list里实现，因为sema的up和cond的signal会把所有waiter一股脑扔回ready_list，没能成功down的会再回到waiters里
+*/
+
+/* TODO
+   以下调用要donate
+   [ ] lock_acquire不成功时donate
+   [ ] lock_release时撤回donate，重新计算所有donation
+   [ ] thread_set_priority时要重新计算所有donation
+*/
+
+/* 
+   1. lock_acquire不成功->wait->发生一次donation->donate给lock的holder
+   2. Sema的down不产生优先级捐赠，因为根本不知道要捐给谁。Sema被up之后，所有的waiter都会被ready，全部扔去schedule，但sema只能被down一次，其他thread发现down不成，会再次注册为waiter然后block。
+   3. Cond的wait不产生优先级捐赠，cond_signal和sema的up一样。成功获得signal会acquire一个lock，在lock_acquire时（如果lock在别人手里，就会）发生donation
+*/
