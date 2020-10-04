@@ -89,6 +89,8 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. xubw: 表征优先级, schedule()以此为排序标准, May change because of donation. */
     int intrinsic_priority;             /* by xubw for p1.2 : 本征优先级 of the thread, would not change because of donation */
+    int ticks_to_wait;                  /* For p1.1: a counter for remaining ticks to wait, thread `ready` when 0 */
+
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */

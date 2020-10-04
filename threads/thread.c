@@ -177,6 +177,7 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
+  
 
   ASSERT (function != NULL);
 
@@ -188,6 +189,7 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -487,7 +489,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = t->intrinsic_priority = priority; // 线程创建时的优先级赋值：指定优先级=本征优先级=表征优先级
   
   t->magic = THREAD_MAGIC;
-
+  t->ticks_to_wait = 0;   /* which means it is not waiting */
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
