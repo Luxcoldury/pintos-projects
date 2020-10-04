@@ -26,29 +26,67 @@ Bowen Xu <xubw@shanghaitech.edu.cn>
 ---- DATA STRUCTURES ----
 
 >> A1: Copy here the declaration of each new or changed `struct' or
->> `struct' member, global or static variable, `typedef', or
+>> `struct` member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+in `timer.c`: 
+```c
+/* decrease `ticks_to_wait` for the waiting threads */
+static void
+decre_ticks(struct thread *thread, void* aux)
+```
+in `thread.h`, struct thread: 
+````c
+int ticks_to_wait;  /* for p1.1:remaining ticks to wait, thread `ready` when 0 */
+```
 
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
+in `timer_sleep()`:
+first set `currentThread->ticks_to_wait` to `ticks` we want it to sleep,
+then call `thread_block()` to put it in the `waiting_list` 
+
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
+
+in `timer_interrupt()`:
+first, `ticks` increase, which means the time going on.
+then, `ticks to wait` decrease for all **waiting** threads.
+    This is done by calling `thread_foreach()` and `decre_ticks()`
+then, call `thread_tick()`
 
 ---- SYNCHRONIZATION ----
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
+I use two lines below to enclose certain operatin,
+so that they are atom operations:
+```c
+enum intr_level old_level = intr_disable ();
+intr_set_level (old_level);
+```
+The operations " set `ticks_to_wait` to zero and `block` " are enclosed in
+`timer_sleep()`
+ 
+
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
+
+The two lines above are used in both `timer_interrupt()` and `timer_sleep()`.
+
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
+
+TA taught so in the tutorial.
+Sorry but I have so many docs and codes to read and I cannot think of another method.
+
 
              PRIORITY SCHEDULING
              ===================

@@ -184,14 +184,14 @@ decre_ticks(struct thread *thread, void* aux)
   if (p->ticks_to_wait==0)         /* not blocked */
     return;
 
-  // enum intr_level old_level = intr_disable ();
+  enum intr_level old_level = intr_disable ();
   p->ticks_to_wait -= 1;
 
   // if `ticks_to_wait` eqauls 0, then unlock
   if (p->ticks_to_wait==0){
     thread_unblock(p);
   }
-  // intr_set_level (old_level);
+  intr_set_level (old_level);
 }
 
 /* Timer interrupt handler. */
