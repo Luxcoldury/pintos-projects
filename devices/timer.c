@@ -92,6 +92,9 @@ timer_sleep (int64_t ticks)
   // int64_t start = timer_ticks ();
   // assert arises if Interrupts not turned on.
   ASSERT (intr_get_level () == INTR_ON);
+  if (ticks<=0){
+    return;
+  }
   // keep `thread_yield()` all along the time until `ticks` passed
   // while (timer_elapsed (start) < ticks) 
     // thread_yield ();
@@ -178,12 +181,12 @@ timer_print_stats (void)
 
 /* decrease `ticks_to_wait` for the waiting threads */
 static void
-decre_ticks(struct thread *thread, void* aux)
+decre_ticks(struct thread *thread, void* aux UNUSED)
 {
   struct thread *p = thread;
-  if (p->ticks_to_wait==0)         /* not blocked */
+  if (p->ticks_to_wait==0)       /* not blocked */
     return;
-
+  /* blocked */
   enum intr_level old_level = intr_disable ();
   p->ticks_to_wait -= 1;
 

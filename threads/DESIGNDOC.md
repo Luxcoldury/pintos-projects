@@ -93,8 +93,8 @@ Sorry but I have so many docs and codes to read and I cannot think of another me
 
 ---- DATA STRUCTURES ----
 
->> B1: Copy here the declaration of each new or changed `struct' or
->> `struct' member, global or static variable, `typedef', or
+>> B1: Copy here the declaration of each new or changed `struct` or
+>> `struct` member, global or static variable, `typedef`, or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 >> B2: Explain the data structure used to track priority donation.
