@@ -89,6 +89,8 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. xubw: 表征优先级, schedule()以此为排序标准, May change because of donation. */
     int intrinsic_priority;             /* by xubw for p1.2 : 本征优先级 of the thread, would not change because of donation */
+    struct list locks_holding;          /* by xubw for p1.2 : 都有谁在等我 List of locks this thread holds */
+    struct lock *blocked_by_lock;       /* by xubw for p1.2 : 而我又在等谁 The lock blocking this thread */
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -138,5 +140,12 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+// ↓ added for p1.2 priority
+
+bool thread_priority_less_than (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+void update_priority (void);
+
+// ↑ added for p1.2 priority
 
 #endif /* threads/thread.h */
