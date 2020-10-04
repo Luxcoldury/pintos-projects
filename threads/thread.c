@@ -71,12 +71,6 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
-// ↓ added for p1.2 priority
-
-static bool thread_priority_greater_than (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-
-// ↑ added for p1.2 priority
-
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -351,13 +345,21 @@ thread_set_priority (int new_priority)
   enum intr_level old_level;
   old_level = intr_disable ();
 
-  ASSERT (PRI_MIN <= new_priority && new_priority <= PRI_MAX);
-  thread_current ()->intrinsic_priority = new_priority;
+  // p1.2 priority
+  if(!thread_mlfqs){
+    ASSERT (PRI_MIN <= new_priority && new_priority <= PRI_MAX);
+    thread_current ()->intrinsic_priority = new_priority;
 
-  // TODO: 本征优先级改变后，要处理表征优先级，然后重新schedule
+    // 自己在运行，pri一定是最高的，自己一定不是waiter。可能是holder
+    // 改低：给其他thread让路，但不影响任何其他thread的pri，因为自己不在等其他thread，没donate给其他thread
+    // 改高：没啥影响_(:з」∠)_因为自己不在等其他thread，没donate给其他thread
+    // 结论：不用参考holder的pri，也没有其他的thread的pri要改
 
-  // 重新schedule
-  thread_yield();
+    // 更新pri
+    update_priority();
+    // 不管咋样都重新schedule
+    thread_yield();
+  }
 
   intr_set_level (old_level);
 }
@@ -487,6 +489,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
 
   t->priority = t->intrinsic_priority = priority; // 线程创建时的优先级赋值：指定优先级=本征优先级=表征优先级
+  list_init(&t->locks_holding); // 初始化list：这个thread都hold了哪些锁
+  t->blocked_by_lock = NULL; // 初始化：这个thread还没有被某个lock阻塞
   
   t->magic = THREAD_MAGIC;
   t->ticks_to_wait = 0;   /* which means it is not waiting */
@@ -516,11 +520,19 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
-  if (list_empty (&ready_list))
+  if (list_empty (&ready_list)){
     return idle_thread;
-  else
-    list_sort(&ready_list, thread_priority_greater_than, NULL); // 按表征优先级排序，队头优先级最大，被选中执行
+  }
+  else{
+    // p1.2 priority
+    if(!thread_mlfqs){
+      list_reverse(&ready_list); // 这是魔法！！！！预先reverse一次，可以保证最后FIFO。不加的话，ready_list会反复正反翻转，并不雨露均沾了
+      list_sort(&ready_list, thread_priority_less_than, NULL);
+      // sort是升序，故reverse后变降序
+      list_reverse(&ready_list);
+    }
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -610,13 +622,33 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
-/* Return TRUE if a.priority > b.priority. 
-   用于list_sort()和list_insert_ordered()
-   表征优先级比较，高者排在队头 */
-static bool
-thread_priority_greater_than (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+/* Return TRUE if a.priority < b.priority. 
+   用于list_sort()和list_insert_ordered() */
+bool
+thread_priority_less_than (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
-  return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
+  return list_entry(a, struct thread, elem)->priority < list_entry(b, struct thread, elem)->priority;
+}
+
+/* Update the priority accroding to intrinsic_priority and donated priority (from locks_holding list)
+   用本征pri和受赠的pri更新表征pri */
+void
+update_priority(void){
+  int max_priority_among_all_waiters = thread_current()->intrinsic_priority; // 如果没有waiter捐，最低值就是自己的本征pri了子
+
+  struct list_elem *e;
+  for (e = list_begin (&thread_current()->locks_holding); e != list_end (&thread_current()->locks_holding); e = list_next (e))
+  {
+    // 遍历这个thread hold的所有lock
+    struct lock *lock_held = list_entry(e, struct lock, holder_list_elem);
+    // lock的waiter们
+    struct list *waiter_list = &(&lock_held->semaphore)->waiters;
+    int max_priority_among_waiters_of_this_lock = list_entry(list_max(waiter_list, thread_priority_less_than, NULL), struct thread, elem)->priority;
+    if (max_priority_among_waiters_of_this_lock > max_priority_among_all_waiters){
+      max_priority_among_all_waiters = max_priority_among_waiters_of_this_lock;
+    }
+  }
+  thread_current()->priority = max_priority_among_all_waiters;
 }
 
 /* TODO
@@ -636,9 +668,9 @@ thread_priority_greater_than (const struct list_elem *a, const struct list_elem 
 
 /* TODO
    以下调用要donate
-   [ ] lock_acquire不成功时donate
-   [ ] lock_release时撤回donate，重新计算所有donation
-   [ ] thread_set_priority时要重新计算所有donation
+   [√] lock_acquire不成功时donate
+   [√] lock_release时撤回donate，重新计算所有donation
+   [√] thread_set_priority时要重新计算所有donation
 */
 
 /* 
