@@ -4,6 +4,9 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#ifndef FIXED_POINT_H
+#include "fixed_point.h"
+#endif
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -23,6 +26,9 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+fixed_t load_avg;                       /* for p1.3 */
+int ready_threads;
+
 
 /* A kernel thread or user process.
 
@@ -74,7 +80,7 @@ typedef int tid_t;
    the `magic' member of the running thread's `struct thread' is
    set to THREAD_MAGIC.  Stack overflow will normally change this
    value, triggering the assertion. */
-/* The `elem' member has a dual purpose.  It can be an element in
+/* The `elem` member has a dual purpose.  It can be an element in
    the run queue (thread.c), or it can be an element in a
    semaphore wait list (synch.c).  It can be used these two ways
    only because they are mutually exclusive: only a thread in the
@@ -90,6 +96,8 @@ struct thread
     int priority;                       /* Priority. xubw: 表征优先级, schedule()以此为排序标准, May change because of donation. */
     int intrinsic_priority;             /* by xubw for p1.2 : 本征优先级 of the thread, would not change because of donation */
     int ticks_to_wait;                  /* for p1.1: 我还要等多久 remaining ticks to wait, thread `ready` when 0 */
+    int nice;                           /* for p1.3: "nice" value to compute priority. */
+    fixed_t recent_cpu;                 /* for p1.3: "recent_cpu" value to compute priority. */
     struct list locks_holding;          /* by xubw for p1.2 : 都有谁在等我 List of locks this thread holds */
     struct lock *blocked_by_lock;       /* by xubw for p1.2 : 而我又在等谁 The lock blocking this thread */
     struct list_elem allelem;           /* List element for all threads list. */
@@ -150,3 +158,4 @@ void update_priority (void);
 // ↑ added for p1.2 priority
 
 #endif /* threads/thread.h */
+

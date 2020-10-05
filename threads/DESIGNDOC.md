@@ -20,6 +20,9 @@ Bowen Xu <xubw@shanghaitech.edu.cn>
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course staff.
 
+p1.1: Thanks for TA's tutorial.
+p1.3: I use `fixed_point.h` from https://github.com/laiy/Pintos/blob/master/src/threads/fixed_point.h, (which is missing from local copy)
+
                  ALARM CLOCK
                  ===========
 
@@ -42,7 +45,7 @@ int ticks_to_wait;  /* for p1.1:remaining ticks to wait, thread `ready` when 0 *
 
 ---- ALGORITHMS ----
 
->> A2: Briefly describe what happens in a call to timer_sleep(),
+>> A2: Briefly describe what happens in a call to `timer_sleep()`,
 >> including the effects of the timer interrupt handler.
 
 in `timer_sleep()`:
@@ -132,6 +135,12 @@ Sorry but I have so many docs and codes to read and I cannot think of another me
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+````c
+int nice
+fixed_t recent_cpu
+fixed_t load_avg
+fixed_t ready_threads
+````
 ---- ALGORITHMS ----
 
 >> C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each
@@ -139,19 +148,19 @@ Sorry but I have so many docs and codes to read and I cannot think of another me
 >> scheduling decision and the priority and recent_cpu values for each
 >> thread after each given number of timer ticks:
 
-timer  recent_cpu    priority   thread
-ticks   A   B   C   A   B   C   to run
------  --  --  --  --  --  --   ------
- 0
- 4
- 8
-12
-16
-20
-24
-28
-32
-36
+| timer | recent_cpu |   priority |  thread|
+| ticks |  A   B   C |  A   B   C |  to run|
+|:-----:|:--  --  --:|: --  -- --:|:------:|
+|0      |0    0    0 | 63  61  59 | A |
+|4      |0    0    0 | 63  61  59 | A |
+|8      |0    0    0 | 63  61  59 | A |
+|12     |0    0    0 | 63  61  59 | A |
+|16     |0    0    0 | 63  61  59 | A |
+|20
+|24
+|28
+|32
+|36
 
 >> C3: Did any ambiguities in the scheduler specification make values
 >> in the table uncertain?  If so, what rule did you use to resolve

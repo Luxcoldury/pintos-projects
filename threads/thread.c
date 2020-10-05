@@ -11,6 +11,9 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#ifndef FIXED_POINT_H
+#include "fixed_point.h"
+#endif
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -93,11 +96,25 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
 
+  /* for p1.3: init load_avg = 0, ready_threads = 0 */
+  load_avg = 0;
+  ready_threads = 0;
+
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  
+  /* p1.3: init niceness and recent_cpu and priority */
+  if(thread_mlfqs){
+    struct thread *p = initial_thread;
+    p->nice = 0;               /* p1.3: initial thread have nice value = 0 */
+    p->recent_cpu = FP_CONST(0);         /* p1.3: initial thread have r_cpu value = 0 */  
+    /* recalculate the priority. */
+    p->priority =PRI_MAX - FP_CONST(FP_DIV_MIX(p->recent_cpu, 4)) - 2*(p->nice);
+  }
+  
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -182,6 +199,16 @@ thread_create (const char *name, int priority,
 
   /* Initialize thread. */
   init_thread (t, name, priority);
+  /* p1.3 */
+  if(thread_mlfqs){
+    struct thread *p = thread_current ();
+    t->nice = p->nice;                      /* p1.3: nice value inherite */
+    t->recent_cpu = p->recent_cpu;          /* p1.3: recent_cpu inherite */
+    
+    /* recalculate the priority. */
+    p->priority =PRI_MAX - FP_CONST(FP_DIV_MIX(p->recent_cpu, 4)) - 2*(p->nice);
+  }
+  /* init tid */
   tid = t->tid = allocate_tid ();
 
 
@@ -345,7 +372,7 @@ thread_set_priority (int new_priority)
   enum intr_level old_level;
   old_level = intr_disable ();
 
-  // p1.2 priority
+  // p1.2 priority: thread_mlfqs == False means not using p1.3
   if(!thread_mlfqs){
     ASSERT (PRI_MIN <= new_priority && new_priority <= PRI_MAX);
     thread_current ()->intrinsic_priority = new_priority;
@@ -371,35 +398,42 @@ thread_get_priority (void)
   return thread_current ()->priority;
 }
 
-/* Sets the current thread's nice value to NICE. */
+/* p1.3: Sets the current thread's nice value to NICE and recalculate the priority. */
 void
 thread_set_nice (int nice UNUSED) 
 {
-  /* Not yet implemented. */
+  /* reset nice value */
+  struct thread *p = thread_current();
+  p->nice = nice;
+
+  /* recalculate the priority. */
+  p->priority =PRI_MAX - FP_CONST(FP_DIV_MIX(p->recent_cpu, 4)) - 2*(p->nice);
+
+  /* if no longer highest priority, yield */
+  /* 这里有个坑！！！！！！！！ */
+  // if (p->priority<63)
+  //   thread_yield();
 }
 
-/* Returns the current thread's nice value. */
+/* p1.3: Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->nice;
 }
 
-/* Returns 100 times the system load average. */
+/* p1.3: Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return FP_ROUND(FP_MULT_MIX(load_avg, 100));
 }
 
-/* Returns 100 times the current thread's recent_cpu value. */
+/* p1.3: Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return FP_ROUND(FP_MULT_MIX(thread_current ()->recent_cpu, 100));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -493,7 +527,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->blocked_by_lock = NULL; // 初始化：这个thread还没有被某个lock阻塞
   
   t->magic = THREAD_MAGIC;
-  t->ticks_to_wait = 0;   /* which means it is not waiting */
+  t->ticks_to_wait = 0;       /* p1.1: which means it is not waiting */
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);

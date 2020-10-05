@@ -7,7 +7,9 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-  
+#ifndef THREADS/THREAD_C
+#include "threads/thread.c"
+#endif  
 /* See [8254] for hardware details of the 8254 timer chip. */
 
 #if TIMER_FREQ < 19
@@ -89,16 +91,11 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  // int64_t start = timer_ticks ();
   // assert arises if Interrupts not turned on.
   ASSERT (intr_get_level () == INTR_ON);
   if (ticks<=0){
     return;
   }
-  // keep `thread_yield()` all along the time until `ticks` passed
-  // while (timer_elapsed (start) < ticks) 
-    // thread_yield ();
-  
   // make sure atom operation
   enum intr_level old_level = intr_disable ();
   struct thread *p = thread_current();
@@ -197,12 +194,55 @@ decre_ticks(struct thread *thread, void* aux UNUSED)
   intr_set_level (old_level);
 }
 
-/* Timer interrupt handler. */
+/* recompute `recent_cpu` for the all threads */
+static void
+update_recent_cpu(struct thread *thread, void *aux UNUSED)
+{
+  struct thread *p = thread;
+  fixed_t coeff = FP_DIV(FP_MULT_MIX(load_avg,2),(FP_ADD_MIX(FP_MULT_MIX(load_avg,2),1)));
+  p->recent_cpu = FP_ADD_MIX(coeff*p->recent_cpu, p->nice);
+}
+
+/* recalculate the priority. */
+static void
+recalcu_priority(struct thread *thread, void *aux UNUSED)
+{
+  /* if thread_mlfqs false, not using this */
+  if(!thread_mlfqs) return;
+  struct thread *p = thread;
+  p->priority = PRI_MAX - FP_CONST(FP_DIV_MIX(p->recent_cpu, 4)) - 2*(p->nice);
+}
+
+/* Timer interrupt handler. which happens each `timer_ticks` */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  thread_foreach(decre_ticks, NULL);  /* each time ticks++, all positive `ticks_to_wait`-- */
+
+  /* p1.1: each time ticks++, all positive `ticks_to_wait`-- */
+  thread_foreach(decre_ticks, NULL);  
+
+  /* p1.3: update recent_cpu, load_avg, ready_threads frequently */
+  if(thread_mlfqs){
+    // no interrupts
+    enum intr_level old_level = intr_disable ();
+    /* update ready_threads */
+    ready_threads = list_size(&ready_list)+1;
+    /* running thread `recent_cpu` += 1 per tick */
+    thread_current()->recent_cpu=FP_ADD_MIX(thread_current()->recent_cpu, 1);
+    /* per second */
+    if(timer_ticks() % TIMER_FREQ==0){
+      /* recompute load_avg and recent_cpu per second */
+      load_avg = FP_CONST(FP_DIV_MIX(FP_MULT_MIX(load_avg, 59),60))+ready_threads/60;
+      thread_foreach(update_recent_cpu, NULL); 
+    }
+    // recalculate priority once every fourth clock tick, for every thread
+    if(timer_ticks() % 4==0){
+      thread_foreach(recalcu_priority, NULL); 
+    }
+
+    intr_set_level (old_level);
+  }
   thread_tick ();
 }
 
