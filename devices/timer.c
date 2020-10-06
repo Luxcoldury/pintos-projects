@@ -7,9 +7,11 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-#ifndef THREADS/THREAD_C
-#include "threads/thread.c"
-#endif  
+
+// #ifndef THREADS/THREAD_C
+// #include "threads/thread.c"
+// #endif  
+
 /* See [8254] for hardware details of the 8254 timer chip. */
 
 #if TIMER_FREQ < 19
@@ -176,7 +178,7 @@ timer_print_stats (void)
 }
 
 
-/* decrease `ticks_to_wait` for the waiting threads */
+/* p1.1: decrease `ticks_to_wait` for the waiting threads */
 static void
 decre_ticks(struct thread *thread, void* aux UNUSED)
 {
@@ -194,7 +196,7 @@ decre_ticks(struct thread *thread, void* aux UNUSED)
   intr_set_level (old_level);
 }
 
-/* recompute `recent_cpu` for the all threads */
+/* p1.3: recompute `recent_cpu` for the all threads */
 static void
 update_recent_cpu(struct thread *thread, void *aux UNUSED)
 {
@@ -203,7 +205,7 @@ update_recent_cpu(struct thread *thread, void *aux UNUSED)
   p->recent_cpu = FP_ADD_MIX(coeff*p->recent_cpu, p->nice);
 }
 
-/* recalculate the priority. */
+/* p1.3: recalculate the priority. */
 static void
 recalcu_priority(struct thread *thread, void *aux UNUSED)
 {
@@ -226,10 +228,16 @@ timer_interrupt (struct intr_frame *args UNUSED)
   if(thread_mlfqs){
     // no interrupts
     enum intr_level old_level = intr_disable ();
-    /* update ready_threads */
-    ready_threads = list_size(&ready_list)+1;
+    //printf ("\n ready_list: %p \n",&ready_list);
+    /* update ready_threads per tick */
+    if(list_empty(&ready_list)  )  
+      ready_threads = 1;
+    else
+      ready_threads = list_size(&ready_list)+1;
+
     /* running thread `recent_cpu` += 1 per tick */
     thread_current()->recent_cpu=FP_ADD_MIX(thread_current()->recent_cpu, 1);
+
     /* per second */
     if(timer_ticks() % TIMER_FREQ==0){
       /* recompute load_avg and recent_cpu per second */

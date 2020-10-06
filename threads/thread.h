@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+
 #ifndef FIXED_POINT_H
 #include "fixed_point.h"
 #endif
@@ -26,8 +27,14 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-fixed_t load_avg;                       /* for p1.3 */
+
+/* for p1.3 */
+fixed_t load_avg;                       
 int ready_threads;
+int max_priority;
+/* List of processes in THREAD_READY state, that is, processes
+   that are ready to run but not actually running. */
+static struct list ready_list;
 
 
 /* A kernel thread or user process.

@@ -11,9 +11,12 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/thread.h"
+
 #ifndef FIXED_POINT_H
 #include "fixed_point.h"
 #endif
+
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -23,9 +26,7 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-/* List of processes in THREAD_READY state, that is, processes
-   that are ready to run but not actually running. */
-static struct list ready_list;
+
 
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
@@ -91,7 +92,7 @@ void
 thread_init (void) 
 {
   ASSERT (intr_get_level () == INTR_OFF);
-
+  printf("thread_init\n");
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -340,8 +341,11 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
+  if (cur != idle_thread)
+  {
     list_push_back (&ready_list, &cur->elem);
+  } 
+    
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
