@@ -213,6 +213,11 @@ recalcu_priority(struct thread *thread, void *aux UNUSED)
   if(!thread_mlfqs) return;
   struct thread *p = thread;
   p->priority = PRI_MAX - FP_CONST(FP_DIV_MIX(p->recent_cpu, 4)) - 2*(p->nice);
+  
+  /* update max_priority each time a priority is updated */
+  if(p->priority > max_priority){
+      max_priority = p->priority;
+    }
 }
 
 /* Timer interrupt handler. which happens each `timer_ticks` */

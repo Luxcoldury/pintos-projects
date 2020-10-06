@@ -11,7 +11,6 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
-#include "threads/thread.h"
 
 #ifndef FIXED_POINT_H
 #include "fixed_point.h"
@@ -92,7 +91,7 @@ void
 thread_init (void) 
 {
   ASSERT (intr_get_level () == INTR_OFF);
-  printf("thread_init\n");
+  // printf("thread_init\n");
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -114,6 +113,7 @@ thread_init (void)
     p->recent_cpu = FP_CONST(0);         /* p1.3: initial thread have r_cpu value = 0 */  
     /* recalculate the priority. */
     p->priority =PRI_MAX - FP_CONST(FP_DIV_MIX(p->recent_cpu, 4)) - 2*(p->nice);
+    max_priority = p->priority;
   }
   
 }
@@ -206,8 +206,11 @@ thread_create (const char *name, int priority,
     t->nice = p->nice;                      /* p1.3: nice value inherite */
     t->recent_cpu = p->recent_cpu;          /* p1.3: recent_cpu inherite */
     
-    /* recalculate the priority. */
+    /* recalculate the priority and update `max_priority`. */
     p->priority =PRI_MAX - FP_CONST(FP_DIV_MIX(p->recent_cpu, 4)) - 2*(p->nice);
+    if(p->priority>max_priority){
+      max_priority = p->priority;
+    }
   }
   /* init tid */
   tid = t->tid = allocate_tid ();
@@ -415,8 +418,8 @@ thread_set_nice (int nice UNUSED)
 
   /* if no longer highest priority, yield */
   /* 这里有个坑！！！！！！！！ */
-  // if (p->priority<63)
-  //   thread_yield();
+  if (p->priority<max_priority)
+    thread_yield();
 }
 
 /* p1.3: Returns the current thread's nice value. */

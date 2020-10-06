@@ -29,9 +29,9 @@ typedef int tid_t;
 #define PRI_MAX 63                      /* Highest priority. */
 
 /* for p1.3 */
-fixed_t load_avg;                       
+fixed_t load_avg;                     
 int ready_threads;
-int max_priority;
+int max_priority;/* record the maximum thread priority currently, so that `yield()` in `set_nice`*/
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
