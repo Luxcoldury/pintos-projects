@@ -1,142 +1,102 @@
-            +--------------------+
-            |        CS 140      |
-            | PROJECT 1: THREADS |
-            |   DESIGN DOCUMENT  |
-            +--------------------+
+# CS 140  PROJECT 1:  THREADS DESIGN DOCUMENT
 
----- GROUP ----
+### GROUP
 
->> Fill in the names and email addresses of your group members.
+*Fill in the names and email addresses of your group members.*
 
-Chuyi Zhao <zhaochy1@shanghaitech.edu.cn>
-Bowen Xu <xubw@shanghaitech.edu.cn>
+* Chuyi Zhao <zhaochy1@shanghaitech.edu.cn>
+* Bowen Xu <xubw@shanghaitech.edu.cn>
 
----- PRELIMINARIES ----
+### PRELIMINARIES
 
->> If you have any preliminary comments on your submission, notes for the
->> TAs, or extra credit, please give them here.
+*If you have any preliminary comments on your submission, notes for the TAs, or extra credit, please give them here. Please cite any offline or online sources you consulted while preparing your submission, other than the Pintos documentation, course text, lecture notes, and course staff.*
 
->> Please cite any offline or online sources you consulted while
->> preparing your submission, other than the Pintos documentation, course
->> text, lecture notes, and course staff.
+* blog for reference: https://www.cnblogs.com/laiy/p/pintos_project1_thread.html  
+* p1.1: Thanks for TA's tutorial.  
+* p1.3: Refer `fixed_point.h` from https://github.com/laiy/Pintos/blob/master/src/threads/fixed_point.h, (which is missed from local copy)
 
-blog for reference: https://www.cnblogs.com/laiy/p/pintos_project1_thread.html
-p1.1: Thanks for TA's tutorial.
-p1.3: I refer `fixed_point.h` from https://github.com/laiy/Pintos/blob/master/src/threads/fixed_point.h, (which is missing from local copy)
+## ALARM CLOCK
 
-                 ALARM CLOCK
-                 ===========
+### DATA STRUCTURES
 
----- DATA STRUCTURES ----
+#### A1: Copy here the declaration of each new or changed `struct` or `struct` member, global or static variable, `typedef`, or enumeration.  Identify the purpose of each in 25 words or less.
 
->> A1: Copy here the declaration of each new or changed `struct' or
->> `struct` member, global or static variable, `typedef', or
->> enumeration.  Identify the purpose of each in 25 words or less.
-
-in `timer.c`: 
+In `timer.c` : 
 ```c
 /* decrease `ticks_to_wait` for the waiting threads */
 static void
 decre_ticks(struct thread *thread, void* aux)
 ```
-in `thread.h`, struct thread: 
-````c
+In `thread.h` , struct thread: 
+```c
 int ticks_to_wait;  /* for p1.1:remaining ticks to wait, thread `ready` when 0 */
 ```
 
----- ALGORITHMS ----
+### ALGORITHMS
 
->> A2: Briefly describe what happens in a call to `timer_sleep()`,
->> including the effects of the timer interrupt handler.
+#### A2: Briefly describe what happens in a call to `timer_sleep()`, including the effects of the timer interrupt handler.
 
-in `timer_sleep()`:
-first set `currentThread->ticks_to_wait` to `ticks` we want it to sleep,
-then call `thread_block()` to put it in the `waiting_list` 
+1. Set `currentThread->ticks_to_wait` to `ticks` we want it to sleep
+2. Call `thread_block()` to put it in the `waiting_list` 
 
->> A3: What steps are taken to minimize the amount of time spent in
->> the timer interrupt handler?
+#### A3: What steps are taken to minimize the amount of time spent in the timer interrupt handler?
 
-in `timer_interrupt()`:
-first, `ticks` increase, which means the time going on.
-then, `ticks to wait` decrease for all **waiting** threads.
-    This is done by calling `thread_foreach()` and `decre_ticks()`
-then, call `thread_tick()`
+In `timer_interrupt()` :  
+1. Increase `ticks`, which means the time going on.  
+2. Decrease `ticks to wait` for all **waiting** threads, which is done by calling `thread_foreach()` and `decre_ticks()`  
+3. Call `thread_tick()`
 
----- SYNCHRONIZATION ----
+### SYNCHRONIZATION
 
->> A4: How are race conditions avoided when multiple threads call
->> timer_sleep() simultaneously?
+#### A4: How are race conditions avoided when multiple threads call timer_sleep() simultaneously?
 
-I use two lines below to enclose certain operatin,
-so that they are atom operations:
+I use two lines below to enclose certain operation, so that they are atom operations:
 ```c
 enum intr_level old_level = intr_disable ();
 intr_set_level (old_level);
 ```
-The operations " set `ticks_to_wait` to zero and `block` " are enclosed in
-`timer_sleep()`
- 
+The operations of setting `ticks_to_wait` to zero and `block` are enclosed.
 
->> A5: How are race conditions avoided when a timer interrupt occurs
->> during a call to timer_sleep()?
+#### A5: How are race conditions avoided when a timer interrupt occurs during a call to timer_sleep()?
 
 The two lines above are used in both `timer_interrupt()` and `timer_sleep()`.
 
+### RATIONALE
 
----- RATIONALE ----
+#### A6: Why did you choose this design?  In what ways is it superior to another design you considered?
 
->> A6: Why did you choose this design?  In what ways is it superior to
->> another design you considered?
+TA taught so in the tutorial. Sorry but I have so many docs and codes to read and I cannot think of another method.
 
-TA taught so in the tutorial.
-Sorry but I have so many docs and codes to read and I cannot think of another method.
+## PRIORITY SCHEDULING
 
+### DATA STRUCTURES
 
-             PRIORITY SCHEDULING
-             ===================
+#### B1: Copy here the declaration of each new or changed `struct` or `struct` member, global or static variable, `typedef`, or enumeration.  Identify the purpose of each in 25 words or less.
 
----- DATA STRUCTURES ----
+#### B2: Explain the data structure used to track priority donation. Use ASCII art to diagram a nested donation.  (Alternately, submit a .png file.)
 
->> B1: Copy here the declaration of each new or changed `struct` or
->> `struct` member, global or static variable, `typedef`, or
->> enumeration.  Identify the purpose of each in 25 words or less.
+### ALGORITHMS
 
->> B2: Explain the data structure used to track priority donation.
->> Use ASCII art to diagram a nested donation.  (Alternately, submit a
->> .png file.)
+#### B3: How do you ensure that the highest priority thread waiting for a lock, semaphore, or condition variable wakes up first?
 
----- ALGORITHMS ----
+#### B4: Describe the sequence of events when a call to lock_acquire() causes a priority donation.  How is nested donation handled?
 
->> B3: How do you ensure that the highest priority thread waiting for
->> a lock, semaphore, or condition variable wakes up first?
+#### B5: Describe the sequence of events when lock_release() is called on a lock that a higher-priority thread is waiting for.
 
->> B4: Describe the sequence of events when a call to lock_acquire()
->> causes a priority donation.  How is nested donation handled?
+### SYNCHRONIZATION
+#### B6: Describe a potential race in thread_set_priority() and explain how your implementation avoids it.  Can you use a lock to avoid this race?
 
->> B5: Describe the sequence of events when lock_release() is called
->> on a lock that a higher-priority thread is waiting for.
+### RATIONALE
 
----- SYNCHRONIZATION ----
+#### B7: Why did you choose this design?  In what ways is it superior to another design you considered?
 
->> B6: Describe a potential race in thread_set_priority() and explain
->> how your implementation avoids it.  Can you use a lock to avoid
->> this race?
+## ADVANCED SCHEDULER
 
----- RATIONALE ----
+### DATA STRUCTURES
 
->> B7: Why did you choose this design?  In what ways is it superior to
->> another design you considered?
+#### C1: Copy here the declaration of each new or changed `struct' or `struct' member, global or static variable, `typedef', or enumeration.  Identify the purpose of each in 25 words or less.
 
-              ADVANCED SCHEDULER
-              ==================
-
----- DATA STRUCTURES ----
-
->> C1: Copy here the declaration of each new or changed `struct' or
->> `struct' member, global or static variable, `typedef', or
->> enumeration.  Identify the purpose of each in 25 words or less.
-
-functions are declared in `thread.h` and defined in `thread.c`:
+Functions are declared in `thread.h` and defined in `thread.c`:
 ```c
 /* in struct `thread`: */
 int nice
@@ -160,90 +120,69 @@ void update_recent_cpu(struct thread *thread, void *aux UNUSED);
 void current_recent_cpu_increse_1(void);
 /* p1.3: recalculate the priority. */
 void recalcu_priority(struct thread *thread, void *aux UNUSED);
-````
+```
 
----- ALGORITHMS ----
+### ALGORITHMS
 
->> C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each
->> has a recent_cpu value of 0.  Fill in the table below showing the
->> scheduling decision and the priority and recent_cpu values for each
->> thread after each given number of timer ticks:
+#### C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each has a recent_cpu value of 0.  Fill in the table below showing the scheduling decision and the priority and recent_cpu values for each thread after each given number of timer ticks:
 
-| timer | recent_cpu |   priority |  thread|
-| ticks |  A   B   C |  A   B   C |  to run|
-|:-----:|:----------:|:----------:|:------:|
-|0      |0    0    0 | 63  61  59 | A |
-|4      |4    1    2 | 62  61  59 | A |
-|8      |8    1    2 | 61  61  59 | B |
-|12     |8    5    2 | 61  59  59 | A |
-|16     |12   5    2 | 60  59  59 | B |
-|20     |12   9    2 | 60  58  59 | A |
-|24     |16   9    2 | 59  58  59 | C |
-|28     |16   9    6 | 59  58  58 | B |
-|32     |16   13   6 | 59  57  58 | A |
-|36     |29   13   6 | 58  57  58 | C |
 
->> C3: Did any ambiguities in the scheduler specification make values
->> in the table uncertain?  If so, what rule did you use to resolve
->> them?  Does this match the behavior of your scheduler?
+<table>
+<tr><th rowspan='2'>timer ticks</th><th colspan='3'>recent_cpu</th><th colspan='3'>priority</th><th rowspan='2'>thread to run</th></tr>
+<tr><td>A</td><td>B</td><td>C</td><td>A</td><td>B</td><td>C</td>
+<tr><td>0 </td><td>0 </td><td>0 </td><td>0</td><td>63</td><td>61</td><td>59<td>A</td></tr>
+<tr><td>4 </td><td>4 </td><td>1 </td><td>2</td><td>62</td><td>61</td><td>59<td>A</td></tr>
+<tr><td>8 </td><td>8 </td><td>1 </td><td>2</td><td>61</td><td>61</td><td>59<td>B</td></tr>
+<tr><td>12</td><td>8 </td><td>5 </td><td>2</td><td>61</td><td>59</td><td>59<td>A</td></tr>
+<tr><td>16</td><td>12</td><td>5 </td><td>2</td><td>60</td><td>59</td><td>59<td>B</td></tr>
+<tr><td>20</td><td>12</td><td>9 </td><td>2</td><td>60</td><td>58</td><td>59<td>A</td></tr>
+<tr><td>24</td><td>16</td><td>9 </td><td>2</td><td>59</td><td>58</td><td>59<td>C</td></tr>
+<tr><td>28</td><td>16</td><td>9 </td><td>6</td><td>59</td><td>58</td><td>58<td>B</td></tr>
+<tr><td>32</td><td>16</td><td>13</td><td>6</td><td>59</td><td>57</td><td>58<td>A</td></tr>
+<tr><td>36</td><td>29</td><td>13</td><td>6</td><td>58</td><td>57</td><td>58<td>C</td></tr>
+</table>
 
-`recent_cpu`: it is counted more frequently(per tick) than priority(per 4 tick).
-            Therefore slight miss is tolerated.
+#### C3: Did any ambiguities in the scheduler specification make values in the table uncertain?  If so, what rule did you use to resolve them?  Does this match the behavior of your scheduler?
+
+`recent_cpu` : It is counted more frequently (per tick) than priority (per 4 tick). Therefore slight miss is tolerated.  
 `next_thread_to_run()`: When two threads have the same priority: run the one with least `recent_cpu`.
 
->> C4: How is the way you divided the cost of scheduling between code
->> inside and outside interrupt context likely to affect performance?
+#### C4: How is the way you divided the cost of scheduling between code inside and outside interrupt context likely to affect performance?
 
-According to the document, "If the timer interrupt handler takes too long, then it will take away most of a timer tick from the thread that the timer interrupt preempted. When it returns control to that thread, it therefore won't get to do much work before the next timer interrupt arrives. That thread will therefore get blamed for a lot more CPU time than it actually got a chance to use. This raises the interrupted thread's recent CPU count, thereby lowering its priority. It can cause scheduling decisions to change. It also raises the load average. "
+According to the document
+
+>If the timer interrupt handler takes too long, then it will take away most of a timer tick from the thread that the timer interrupt preempted. When it returns control to that thread, it therefore won't get to do much work before the next timer interrupt arrives. That thread will therefore get blamed for a lot more CPU time than it actually got a chance to use. This raises the interrupted thread's recent CPU count, thereby lowering its priority. It can cause scheduling decisions to change. It also raises the load average.
 
 Which means, more time cost by the scheduler will lower performance.
 
----- RATIONALE ----
+### RATIONALE
 
->> C5: Briefly critique your design, pointing out advantages and
->> disadvantages in your design choices.  If you were to have extra
->> time to work on this part of the project, how might you choose to
->> refine or improve your design?
+#### C5: Briefly critique your design, pointing out advantages and disadvantages in your design choices.  If you were to have extra time to work on this part of the project, how might you choose to refine or improve your design?
+
 Advantages:
-    Few variables are added. Therefore fewer bugs and simpler.
+* Few variables are added. Therefore fewer bugs and simpler.
+
 Disadvantages:
-    Time complexity could have be improved with more complex code.
+* Time complexity could have be improved with more complex code.
 
 Maybe the priority queues.
-We use `ready_list`, only one sorted priority queues and sort it frequently.
-Therefore each operation like `push_back()` or `pop()` requires sorting,
-with O(n) or O(nlogn) complexity. If 64 queues are used, the time complexity could be simplified.
 
->> C6: The assignment explains arithmetic for fixed-point math in
->> detail, but it leaves it open to you to implement it.  Why did you
->> decide to implement it the way you did?  If you created an
->> abstraction layer for fixed-point math, that is, an abstract data
->> type and/or a set of functions or macros to manipulate fixed-point
->> numbers, why did you do so?  If not, why not?
+We use `ready_list`, only one sorted priority queues and sort it frequently. Therefore each operation like `push_back()` or `pop()` requires sorting, with $O(n)$ or $O(nlogn)$ complexity. If 64 queues are used, the time complexity could be simplified.
 
-macros. Simple to write and faster than functions.
+#### C6: The assignment explains arithmetic for fixed-point math in detail, but it leaves it open to you to implement it.  Why did you decide to implement it the way you did?  If you created an abstraction layer for fixed-point math, that is, an abstract data type and/or a set of functions or macros to manipulate fixed-point numbers, why did you do so?  If not, why not?
 
+Macros. Simple to write and faster than functions.
 
-               SURVEY QUESTIONS
-               ================
+## SURVEY QUESTIONS
 
-Answering these questions is optional, but it will help us improve the
-course in future quarters.  Feel free to tell us anything you
-want--these questions are just to spur your thoughts.  You may also
-choose to respond anonymously in the course evaluations at the end of
-the quarter.
+*Answering these questions is optional, but it will help us improve the course in future quarters.  Feel free to tell us anything you want--these questions are just to spur your thoughts.  You may also choose to respond anonymously in the course evaluations at the end of the quarter.*
 
->> In your opinion, was this assignment, or any one of the three problems
->> in it, too easy or too hard?  Did it take too long or too little time?
+#### In your opinion, was this assignment, or any one of the three problems in it, too easy or too hard?  Did it take too long or too little time?
 
->> Did you find that working on a particular part of the assignment gave
->> you greater insight into some aspect of OS design?
+#### Did you find that working on a particular part of the assignment gave you greater insight into some aspect of OS design?
 
->> Is there some particular fact or hint we should give students in
->> future quarters to help them solve the problems?  Conversely, did you
->> find any of our guidance to be misleading?
+#### Is there some particular fact or hint we should give students in future quarters to help them solve the problems?  Conversely, did you find any of our guidance to be misleading?
 
->> Do you have any suggestions for the TAs to more effectively assist
->> students, either for future quarters or the remaining projects?
+#### Do you have any suggestions for the TAs to more effectively assist students, either for future quarters or the remaining projects?
 
->> Any other comments?
+#### Any other comments?
