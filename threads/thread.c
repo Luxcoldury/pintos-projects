@@ -117,14 +117,14 @@ thread_init (void)
   initial_thread->tid = allocate_tid ();
   
   /* p1.3: init niceness and recent_cpu and priority */
-  if(thread_mlfqs){
-    struct thread *p = initial_thread;
-    p->nice = 0;               /* p1.3: initial thread have nice value = 0 */
-    p->recent_cpu = INT_TO_FP(0);         /* p1.3: initial thread have r_cpu value = 0 */  
-    /* recalculate the priority. */
-    // p->priority = FP_SUB(FP_ROUND_ZERO(FP_SUB(INT_TO_FP(PRI_MAX), FP_DIV_INT(p->recent_cpu, 4))), INT_TO_FP(2*p->nice));
-    max_priority = p->priority;
-  }
+  // if(thread_mlfqs){
+  //   struct thread *p = initial_thread;
+  //   p->nice = 0;               /* p1.3: initial thread have nice value = 0 */
+  //   p->recent_cpu = INT_TO_FP(0);         /* p1.3: initial thread have r_cpu value = 0 */  
+  //   /* recalculate the priority. */
+  //   p->priority = PRI_MAX;
+    // max_priority = p->priority;
+  // }
   
 }
 
@@ -212,14 +212,14 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   
   /* p1.3 */
-  if(thread_mlfqs){
-    struct thread *p = thread_current ();
-    t->nice = p->nice;                      /* p1.3: nice value inherite */
-    t->recent_cpu = p->recent_cpu;          /* p1.3: recent_cpu inherite */
+  // if(thread_mlfqs){
+  //   struct thread *p = thread_current ();
+  //   t->nice = p->nice;                      /* p1.3: nice value inherite */
+  //   t->recent_cpu = p->recent_cpu;          /* p1.3: recent_cpu inherite */
     
-    /* recalculate the priority and update `max_priority`. */
-    recalcu_priority(t, NULL);
-  }
+  //   /* recalculate the priority and update `max_priority`. */
+  //   recalcu_priority(t, NULL);
+  // }
   /* init tid */
   tid = t->tid = allocate_tid ();
 
@@ -543,6 +543,11 @@ init_thread (struct thread *t, const char *name, int priority)
   
   t->magic = THREAD_MAGIC;
   t->ticks_to_wait = 0;       /* p1.1: which means it is not waiting */
+
+  /* p1.2 */
+  t->nice = 0;
+  t->recent_cpu = INT_TO_FP(0);
+  
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
@@ -762,7 +767,7 @@ void update_load_avg(void)
   ready_threads = thread_current ()==idle_thread ?tmp:tmp+1;
 
   load_avg = FP_ADD(FP_DIV_INT(FP_MULT_INT(load_avg, 59),60), FP_DIV_INT(INT_TO_FP(ready_threads), 60));
-
+  printf ("ready_threads: %d   load_avg: %d\n", ready_threads, load_avg);
 }
 
 

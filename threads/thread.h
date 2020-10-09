@@ -95,7 +95,7 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. xubw: 表征优先级, schedule()以此为排序标准, May change because of donation. */
     int intrinsic_priority;             /* by xubw for p1.2 : 本征优先级 of the thread, would not change because of donation */
-    int ticks_to_wait;              /* for p1.1: 我还要等多久 remaining ticks to wait, thread `ready` when 0 */
+    int64_t ticks_to_wait;              /* for p1.1: 我还要等多久 remaining ticks to wait, thread `ready` when 0 */
     int nice;                           /* for p1.3: "nice" value to compute priority. */
     int64_t recent_cpu;                 /* for p1.3: "recent_cpu" value to compute priority. */
     struct list locks_holding;          /* by xubw for p1.2 : 都有谁在等我 List of locks this thread holds */

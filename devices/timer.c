@@ -184,7 +184,7 @@ decre_ticks(struct thread *thread, void* aux UNUSED)
     return;
   /* blocked */
   enum intr_level old_level = intr_disable ();
-  p->ticks_to_wait -= 1;
+  (p->ticks_to_wait) --;
 
   // if `ticks_to_wait` eqauls 0, then unlock
   if (p->ticks_to_wait==0){

@@ -22,7 +22,6 @@ Bowen Xu <xubw@shanghaitech.edu.cn>
 
 blog for reference: https://www.cnblogs.com/laiy/p/pintos_project1_thread.html
 p1.1: Thanks for TA's tutorial.
-p1.3: I refer `fixed_point.h` from https://github.com/laiy/Pintos/blob/master/src/threads/fixed_point.h, (which is missing from local copy)
 
                  ALARM CLOCK
                  ===========
@@ -41,7 +40,7 @@ decre_ticks(struct thread *thread, void* aux)
 ```
 in `thread.h`, struct thread: 
 ````c
-int ticks_to_wait;  /* for p1.1:remaining ticks to wait, thread `ready` when 0 */
+int64_t ticks_to_wait;  /* for p1.1:remaining ticks to wait, thread `ready` when 0 */
 ```
 
 ---- ALGORITHMS ----
