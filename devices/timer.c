@@ -198,21 +198,16 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  thread_tick ();
 
   /* p1.1: each time ticks++, all positive `ticks_to_wait`-- */
   thread_foreach(decre_ticks, NULL);  
 
   /* p1.3: update recent_cpu, load_avg, ready_threads frequently */
   if(thread_mlfqs){
-    // no interrupts
-    enum intr_level old_level = intr_disable ();
-    //printf ("\n ready_list: %p \n",&ready_list);
-
-    /* per tick: update ready_threads, running thread `recent_cpu` += 1 */
-    update_ready_threads ();
+    /* per tick: running thread `recent_cpu` += 1 */
     current_recent_cpu_increse_1();
-
-    /* per second */
+    /* per second：update */
     if(timer_ticks() % TIMER_FREQ == 0){
       /* recompute load_avg and recent_cpu per second */
       update_load_avg ();
@@ -222,10 +217,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     if(timer_ticks() % 4 == 0){
       thread_foreach(recalcu_priority, NULL); 
     }
-    
-    intr_set_level (old_level);
   }
-  thread_tick ();
 }
 
 

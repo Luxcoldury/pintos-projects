@@ -20,8 +20,9 @@ Bowen Xu <xubw@shanghaitech.edu.cn>
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course staff.
 
+blog for reference: https://www.cnblogs.com/laiy/p/pintos_project1_thread.html
 p1.1: Thanks for TA's tutorial.
-p1.3: I use `fixed_point.h` from https://github.com/laiy/Pintos/blob/master/src/threads/fixed_point.h, (which is missing from local copy)
+p1.3: I refer `fixed_point.h` from https://github.com/laiy/Pintos/blob/master/src/threads/fixed_point.h, (which is missing from local copy)
 
                  ALARM CLOCK
                  ===========
@@ -135,12 +136,32 @@ Sorry but I have so many docs and codes to read and I cannot think of another me
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-````c
+functions are declared in `thread.h` and defined in `thread.c`:
+```c
+/* in struct `thread`: */
 int nice
-fixed_t recent_cpu
-fixed_t load_avg
-fixed_t ready_threads
+fixed recent_cpu
+
+/* globally: */
+int max_pri     /* to record max priority */
+fixed load_avg
+int ready_threads
+#define nice_min -20
+#define nice_max 20
+
+
+/* p1.3: update ready_threads = all ready threads num + running threads(not idle) */
+void update_ready_threads(void);
+/* p1.3: update load_avg */
+void update_load_avg(void);
+/* p1.3: recompute `recent_cpu`  */
+void update_recent_cpu(struct thread *thread, void *aux UNUSED);
+/* p1.3: update recent_cpu by increasing 1 per seceond */
+void current_recent_cpu_increse_1(void);
+/* p1.3: recalculate the priority. */
+void recalcu_priority(struct thread *thread, void *aux UNUSED);
 ````
+
 ---- ALGORITHMS ----
 
 >> C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each
@@ -150,24 +171,32 @@ fixed_t ready_threads
 
 | timer | recent_cpu |   priority |  thread|
 | ticks |  A   B   C |  A   B   C |  to run|
-|:-----:|:--  --  --:|: --  -- --:|:------:|
+|:-----:|:----------:|:----------:|:------:|
 |0      |0    0    0 | 63  61  59 | A |
-|4      |0    0    0 | 63  61  59 | A |
-|8      |0    0    0 | 63  61  59 | A |
-|12     |0    0    0 | 63  61  59 | A |
-|16     |0    0    0 | 63  61  59 | A |
-|20
-|24
-|28
-|32
-|36
+|4      |4    1    2 | 62  61  59 | A |
+|8      |8    1    2 | 61  61  59 | B |
+|12     |8    5    2 | 61  59  59 | A |
+|16     |12   5    2 | 60  59  59 | B |
+|20     |12   9    2 | 60  58  59 | A |
+|24     |16   9    2 | 59  58  59 | C |
+|28     |16   9    6 | 59  58  58 | B |
+|32     |16   13   6 | 59  57  58 | A |
+|36     |29   13   6 | 58  57  58 | C |
 
 >> C3: Did any ambiguities in the scheduler specification make values
 >> in the table uncertain?  If so, what rule did you use to resolve
 >> them?  Does this match the behavior of your scheduler?
 
+`recent_cpu`: it is counted more frequently(per tick) than priority(per 4 tick).
+            Therefore slight miss is tolerated.
+`next_thread_to_run()`: When two threads have the same priority: run the one with least `recent_cpu`.
+
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
+
+According to the document, "If the timer interrupt handler takes too long, then it will take away most of a timer tick from the thread that the timer interrupt preempted. When it returns control to that thread, it therefore won't get to do much work before the next timer interrupt arrives. That thread will therefore get blamed for a lot more CPU time than it actually got a chance to use. This raises the interrupted thread's recent CPU count, thereby lowering its priority. It can cause scheduling decisions to change. It also raises the load average. "
+
+Which means, more time cost by the scheduler will lower performance.
 
 ---- RATIONALE ----
 
@@ -175,6 +204,15 @@ fixed_t ready_threads
 >> disadvantages in your design choices.  If you were to have extra
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
+Advantages:
+    Few variables are added. Therefore fewer bugs and simpler.
+Disadvantages:
+    Time complexity could have be improved with more complex code.
+
+Maybe the priority queues.
+We use `ready_list`, only one sorted priority queues and sort it frequently.
+Therefore each operation like `push_back()` or `pop()` requires sorting,
+with O(n) or O(nlogn) complexity. If 64 queues are used, the time complexity could be simplified.
 
 >> C6: The assignment explains arithmetic for fixed-point math in
 >> detail, but it leaves it open to you to implement it.  Why did you
@@ -182,6 +220,9 @@ fixed_t ready_threads
 >> abstraction layer for fixed-point math, that is, an abstract data
 >> type and/or a set of functions or macros to manipulate fixed-point
 >> numbers, why did you do so?  If not, why not?
+
+macros. Simple to write and faster than functions.
+
 
                SURVEY QUESTIONS
                ================
