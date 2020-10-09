@@ -94,7 +94,7 @@ struct list_elem holder_list_elem;  /* register the lock
 
 #### B2: Explain the data structure used to track priority donation. Use ASCII art to diagram a nested donation.  (Alternately, submit a .png file.)
 
-The donation chain of priority is maintained by the list `locks_holding` stored in each thread. Threads receives donation from the `waiters` of the `locks` holded by itself.
+The donation chain of priority is maintained by the list `locks_holding` stored in each thread. Threads receives donation from the `waiters` of the `locks` held by itself.
 
 ```mermaid
 graph TB
@@ -121,15 +121,15 @@ graph TB
 #### B3: How do you ensure that the highest priority thread waiting for a lock, semaphore, or condition variable wakes up first?
 
 * Semaphore  
-    All the threads wanting to `down` a semaphore will be unblocked and added to `ready_list` ,then sorted by the scheduler. The highest priority thread will get its chance to `down` the semaphore. The other threads will be blocked agained since the semaphore can't be downed any more.
+    All the threads wanting to `down` a semaphore will be unblocked and added to `ready_list` , then sorted by the scheduler. The highest priority thread will get its chance to `down` the semaphore. The other threads will be blocked again since the semaphore can't be downed any more.
 * Lock  
-    The waiting list of a `lock` is maintained by its member `semaphore`. Priority scheduling of locks is guarrenteed as the way done for semaphore.
+    The waiting list of a `lock` is maintained by its member `semaphore`. Priority scheduling of locks is guaranteed as the way done for semaphore.
 * Condvar  
     Waiting list of a `condvar` is maintained independently. The waiting threads will be sorted by their priority when a `condvar` is signaled. Only one of them will be pushed to `ready_list`,
 
 #### B4: Describe the sequence of events when a call to lock_acquire() causes a priority donation.  How is nested donation handled?
 
-`lock_acquire()` causes a priority donation only if the lock can't be acquired, or to say, held by another thread. Which means that the thread wanted to acquire the lock will have to **wait for** the holder of the lock. Priority of current thread will then be donated to the helder thread. In case the helder thread is waiting for, and also, blocked by another thread, nested priority donation is carried out by iterating along the `blocked_by_lock` pointer, donating the priority til the top holder.
+`lock_acquire()` causes a priority donation only if the lock can't be acquired, or to say, held by another thread. Which means that the thread wanted to acquire the lock will have to **wait for** the holder of the lock. Priority of current thread will then be donated to the holder thread. In case the holder thread is waiting for, and also, blocked by another thread, nested priority donation is carried out by iterating along the `blocked_by_lock` pointer, donating the priority till the top holder.
 
 #### B5: Describe the sequence of events when lock_release() is called on a lock that a higher-priority thread is waiting for.
 
@@ -148,9 +148,9 @@ sequenceDiagram
     Thread 1-->>Thread 1: Lock can't be released
 ```
 
-Interupt is disabled until the intrinsic priority is set and the representational priority is recalculated.
+Interrupt is disabled until the intrinsic priority is set and the representational priority is recalculated.
 
-Lock should not be used since it will triger priority doantion.
+Lock should not be used since it will trigger priority donation.
 
 ### RATIONALE
 
@@ -251,11 +251,11 @@ These three problems are not so hard but too nasty for beginners to get their ha
 
 #### Did you find that working on a particular part of the assignment gave you greater insight into some aspect of OS design?
 
-This assignment envlolves modifying the codes for thread scheduling, which requires great insight into that aspect. I wish I had that before getting hands on this assignment. Building the insight through the procedure of this project, without extra hints, is purely exhausting.
+This assignment involves modifying the codes for thread scheduling, which requires great insight into that aspect. I wish I had that before getting hands on this assignment. Building the insight through the procedure of this project, without extra hints, is purely exhausting.
 
 #### Is there some particular fact or hint we should give students in future quarters to help them solve the problems?  Conversely, did you find any of our guidance to be misleading?
 
-PLEASE make the toolchains provided conforming common development practises. 光是在vm上git clone就能有四五个坑，实在心累。
+PLEASE make the toolchains provided conforming common development practices. 光是在vm上git clone就能有四五个坑，实在心累。
 
 #### Do you have any suggestions for the TAs to more effectively assist students, either for future quarters or the remaining projects?
 
