@@ -209,13 +209,13 @@ timer_interrupt (struct intr_frame *args UNUSED)
     current_recent_cpu_increse_1();
     /* per second：update */
     if(timer_ticks() % TIMER_FREQ == 0){
+      thread_foreach(update_recent_cpu, NULL); 
       /* recompute load_avg and recent_cpu per second */
       update_load_avg ();
-      thread_foreach(update_recent_cpu, NULL); 
     }
     /* every fourth clock tick: recalculate priority once for every thread */    
     if(timer_ticks() % 4 == 0){
-      thread_foreach(recalcu_priority, NULL); 
+      recalcu_priority(thread_current(), NULL); 
     }
   }
 }

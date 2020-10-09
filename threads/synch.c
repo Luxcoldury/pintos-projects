@@ -204,6 +204,7 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  enum intr_level old_level = intr_disable ();
   // p1.2 priority
   // 如果acquire不成功，捐赠pri给holder
   // 没有holder就不会有waiter，就一定能acquire。有holder则一定不能acquire，需要捐赠
@@ -235,6 +236,8 @@ lock_acquire (struct lock *lock)
     // 把lock添加到自己的holding列表里
     list_push_back(&thread_current()->locks_holding, &lock->holder_list_elem);
   }
+
+  intr_set_level (old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -269,7 +272,6 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   lock->holder = NULL;
-
   // p1.2 priority
   if(!thread_mlfqs){
     // 从thread的holding列表里去掉这个lock
@@ -279,7 +281,6 @@ lock_release (struct lock *lock)
 
     // 重新计算捐赠给别人的优先级？我在等谁？如果我是waiter我不应该处于block状态么？我没在等别人
   }
-  
   sema_up (&lock->semaphore);
 }
 

@@ -140,11 +140,11 @@ functions are declared in `thread.h` and defined in `thread.c`:
 ```c
 /* in struct `thread`: */
 int nice
-fixed recent_cpu
+int64_t recent_cpu
 
 /* globally: */
 int max_pri     /* to record max priority */
-fixed load_avg
+int64_t load_avg
 int ready_threads
 #define nice_min -20
 #define nice_max 20

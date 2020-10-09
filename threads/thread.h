@@ -95,9 +95,9 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. xubw: 表征优先级, schedule()以此为排序标准, May change because of donation. */
     int intrinsic_priority;             /* by xubw for p1.2 : 本征优先级 of the thread, would not change because of donation */
-    int ticks_to_wait;                  /* for p1.1: 我还要等多久 remaining ticks to wait, thread `ready` when 0 */
+    int ticks_to_wait;              /* for p1.1: 我还要等多久 remaining ticks to wait, thread `ready` when 0 */
     int nice;                           /* for p1.3: "nice" value to compute priority. */
-    fixed recent_cpu;                 /* for p1.3: "recent_cpu" value to compute priority. */
+    int64_t recent_cpu;                 /* for p1.3: "recent_cpu" value to compute priority. */
     struct list locks_holding;          /* by xubw for p1.2 : 都有谁在等我 List of locks this thread holds */
     struct lock *blocked_by_lock;       /* by xubw for p1.2 : 而我又在等谁 The lock blocking this thread */
     struct list_elem allelem;           /* List element for all threads list. */
@@ -159,7 +159,7 @@ void update_priority (void);
 
 // ↓ added for p1.3 multi-level priority
 
-void update_ready_threads(void);
+// void update_ready_threads(void);
 void update_load_avg(void);
 void update_recent_cpu(struct thread *thread, void *aux UNUSED);
 void current_recent_cpu_increse_1(void);
