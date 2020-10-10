@@ -13,7 +13,6 @@
 
 * blog for reference: https://www.cnblogs.com/laiy/p/pintos_project1_thread.html  
 * p1.1: Thanks for TA's tutorial.  
-* p1.3: Refer `fixed_point.h` from https://github.com/laiy/Pintos/blob/master/src/threads/fixed_point.h, (which is missed from local copy)
 
 ## ALARM CLOCK
 
