@@ -30,7 +30,6 @@
 #define nice_max 20
 int64_t load_avg;                     
 int ready_threads;
-// int max_priority;/* record the maximum thread priority currently, so that `yield()` in `set_nice`*/
 
 
 /* List of processes in THREAD_READY state, that is, processes
@@ -114,18 +113,7 @@ thread_init (void)
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
-  initial_thread->tid = allocate_tid ();
-  
-  /* p1.3: init niceness and recent_cpu and priority */
-  // if(thread_mlfqs){
-  //   struct thread *p = initial_thread;
-  //   p->nice = 0;               /* p1.3: initial thread have nice value = 0 */
-  //   p->recent_cpu = INT_TO_FP(0);         /* p1.3: initial thread have r_cpu value = 0 */  
-  //   /* recalculate the priority. */
-  //   p->priority = PRI_MAX;
-    // max_priority = p->priority;
-  // }
-  
+  initial_thread->tid = allocate_tid ();  
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -210,19 +198,15 @@ thread_create (const char *name, int priority,
 
   /* Initialize thread. */
   init_thread (t, name, priority);
-  
+  /* init tid */
+  tid = t->tid = allocate_tid ();
+
   /* p1.3： inherit */
   if(thread_mlfqs){
     struct thread *p = thread_current ();
     t->nice = p->nice;                      /* p1.3: nice value inherite */
     t->recent_cpu = p->recent_cpu;          /* p1.3: recent_cpu inherite */
-    
-    /* recalculate the priority and update `max_priority`. */
-    // recalcu_priority(t, NULL);
   }
-  /* init tid */
-  tid = t->tid = allocate_tid ();
-
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -264,8 +248,6 @@ thread_block (void)
 
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
-  // printf("after block: current: %s, pri:%d\n", thread_current()->name, thread_current()->priority);
-
 }
 
 /* Transitions a blocked thread T to the ready-to-run state.
@@ -361,12 +343,8 @@ thread_yield (void)
   {
     list_push_back (&ready_list, &cur->elem);
   } 
-    
   cur->status = THREAD_READY;
   schedule ();
-  // printf("after yield, current: %s, pri:%d\n", thread_current()->name, thread_current()->priority);
-  // printf ("nice: %d, ready: %d\n", thread_current()->nice, list_size (&ready_list));
-
   intr_set_level (old_level);
 }
 
@@ -583,17 +561,21 @@ next_thread_to_run (void)
   if (list_empty (&ready_list)){
     return idle_thread;
   }
-  else{
+  else if(!thread_mlfqs){
     // p1.2 priority
-    // if(!thread_mlfqs){
-      enum intr_level old_level= intr_disable ();
-      list_reverse(&ready_list); // 这是魔法！！！！预先reverse一次，可以保证最后FIFO。不加的话，ready_list会反复正反翻转，并不雨露均沾了
-      list_sort(&ready_list, thread_priority_less_than, NULL);
-      // sort是升序，故reverse后变降序
-      list_reverse(&ready_list);
-      intr_set_level (old_level);
-    // }
+    enum intr_level old_level= intr_disable ();
+    list_reverse(&ready_list); // 这是魔法！！！！预先reverse一次，可以保证最后FIFO。不加的话，ready_list会反复正反翻转，并不雨露均沾了
+    list_sort(&ready_list, thread_priority_less_than, NULL);
+    // sort是升序，故reverse后变降序
+    list_reverse(&ready_list);
+    intr_set_level (old_level);
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  }
+  else{
+    // p1.3: O(n) operation to get `next_thread`
+    struct list_elem *max_thread = list_max (&ready_list, thread_priority_less_than, NULL);
+    list_remove (max_thread);
+    return list_entry (max_thread, struct thread, elem);
   }
 }
 
@@ -754,7 +736,6 @@ void update_load_avg(void)
   ready_threads = thread_current ()==idle_thread ?tmp:tmp+1;
 
   load_avg = FP_ADD(FP_DIV_INT(FP_MULT_INT(load_avg, 59),60), FP_DIV_INT(INT_TO_FP(ready_threads), 60));
-  // printf ("ready_threads: %d   load_avg: %lld\n", ready_threads, load_avg);
 }
 
 
