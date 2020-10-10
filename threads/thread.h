@@ -159,7 +159,6 @@ void update_priority (void);
 
 // ↓ added for p1.3 multi-level priority
 
-// void update_ready_threads(void);
 void update_load_avg(void);
 void update_recent_cpu(struct thread *thread, void *aux UNUSED);
 void current_recent_cpu_increse_1(void);

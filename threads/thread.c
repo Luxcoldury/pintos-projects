@@ -101,7 +101,7 @@ void
 thread_init (void) 
 {
   ASSERT (intr_get_level () == INTR_OFF);
-  // printf("thread_init\n");
+  // printf("thread_init() called! \n");
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -218,7 +218,7 @@ thread_create (const char *name, int priority,
     t->recent_cpu = p->recent_cpu;          /* p1.3: recent_cpu inherite */
     
     /* recalculate the priority and update `max_priority`. */
-    recalcu_priority(t, NULL);
+    // recalcu_priority(t, NULL);
   }
   /* init tid */
   tid = t->tid = allocate_tid ();
@@ -242,7 +242,7 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
-  // if (priority > thread_current()->priority)
+  if (priority > thread_current()->priority)
   // 如果新thread优先级高，就要运行新thread。
     thread_yield (); // 不管新thread高不高，都reschedule。
   // 问题：即使新thread的pri低，如果有其他的（不相关的、）同pri的、ready的thread，可能会切过去hhh。大概不影响test，毕竟test里的优先级都是好好分开的
@@ -264,6 +264,8 @@ thread_block (void)
 
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
+  // printf("after block: current: %s, pri:%d\n", thread_current()->name, thread_current()->priority);
+
 }
 
 /* Transitions a blocked thread T to the ready-to-run state.
@@ -339,6 +341,8 @@ thread_exit (void)
   list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
+  // printf("after exit: current: %s, pri:%d\n", thread_current()->name, thread_current()->priority);
+
   NOT_REACHED ();
 }
 
@@ -360,6 +364,9 @@ thread_yield (void)
     
   cur->status = THREAD_READY;
   schedule ();
+  // printf("after yield, current: %s, pri:%d\n", thread_current()->name, thread_current()->priority);
+  // printf ("nice: %d, ready: %d\n", thread_current()->nice, list_size (&ready_list));
+
   intr_set_level (old_level);
 }
 
@@ -419,15 +426,13 @@ void
 thread_set_nice (int nice UNUSED) 
 {
   /* reset nice value */
+  // printf ("set nice from %d to %d! \n", thread_current()->nice, nice);
   thread_current ()->nice = nice;
   if (nice>nice_max) thread_current ()->nice = nice_max;
   if (nice<nice_min) thread_current ()->nice = nice_min;
 
   /* recalculate the priority. */
   recalcu_priority(thread_current (), NULL);
-
-  /* if no longer highest priority, yield */
-  // if (thread_current ()->priority < max_priority)
   thread_yield();
 }
 
@@ -740,27 +745,6 @@ update_priority(void){
 
 
 /* below for p1.3 */
-/* p1.3: update ready_threads = all ready threads num + running threads(not idle) */
-// void update_ready_threads(void)
-// {
-//   ASSERT(thread_mlfqs);
-//   ASSERT(intr_context());
-
-//   int tmp = thread_current()==idle_thread?0:1;
-//   struct list_elem *e;
-//   ASSERT (intr_get_level () == INTR_OFF);
-//   for (e = list_begin (&ready_list); e != list_end (&ready_list);
-//        e = list_next (e)){
-//       if(list_entry (e, struct thread, allelem)!=idle_thread){
-//         tmp++;
-//       }
-//     }
-
-//   if(ready_threads!=tmp){
-//     ready_threads = tmp;
-//   }
-// }
-
 /* p1.3: update load_avg */
 void update_load_avg(void)
 {
