@@ -791,7 +791,7 @@ recalcu_priority(struct thread *thread, void *aux UNUSED)
   struct thread *p = thread;
   if(p==idle_thread) return;
   
-  p->priority = FP_SUB(FP_ROUND_ZERO(FP_SUB(INT_TO_FP(PRI_MAX), FP_DIV_INT(p->recent_cpu, 4))), INT_TO_FP(2*p->nice));
+  p->priority = PRI_MAX - FP_ROUND_ZERO(p->recent_cpu / 4) - (p->nice * 2);  
   if(p->priority<PRI_MIN) p->priority=PRI_MIN;
   if(p->priority>PRI_MAX) p->priority=PRI_MAX;
 }
