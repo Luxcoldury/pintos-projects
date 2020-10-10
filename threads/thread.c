@@ -30,7 +30,7 @@
 #define nice_max 20
 int64_t load_avg;                     
 int ready_threads;
-int max_priority;/* record the maximum thread priority currently, so that `yield()` in `set_nice`*/
+// int max_priority;/* record the maximum thread priority currently, so that `yield()` in `set_nice`*/
 
 
 /* List of processes in THREAD_READY state, that is, processes
@@ -211,15 +211,15 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   
-  /* p1.3 */
-  // if(thread_mlfqs){
-  //   struct thread *p = thread_current ();
-  //   t->nice = p->nice;                      /* p1.3: nice value inherite */
-  //   t->recent_cpu = p->recent_cpu;          /* p1.3: recent_cpu inherite */
+  /* p1.3： inherit */
+  if(thread_mlfqs){
+    struct thread *p = thread_current ();
+    t->nice = p->nice;                      /* p1.3: nice value inherite */
+    t->recent_cpu = p->recent_cpu;          /* p1.3: recent_cpu inherite */
     
-  //   /* recalculate the priority and update `max_priority`. */
-  //   recalcu_priority(t, NULL);
-  // }
+    /* recalculate the priority and update `max_priority`. */
+    recalcu_priority(t, NULL);
+  }
   /* init tid */
   tid = t->tid = allocate_tid ();
 
@@ -242,8 +242,9 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  // if (priority > thread_current()->priority)
   // 如果新thread优先级高，就要运行新thread。
-  thread_yield (); // 不管新thread高不高，都reschedule。
+    thread_yield (); // 不管新thread高不高，都reschedule。
   // 问题：即使新thread的pri低，如果有其他的（不相关的、）同pri的、ready的thread，可能会切过去hhh。大概不影响test，毕竟test里的优先级都是好好分开的
 
   return tid;
@@ -426,7 +427,7 @@ thread_set_nice (int nice UNUSED)
   recalcu_priority(thread_current (), NULL);
 
   /* if no longer highest priority, yield */
-  if (thread_current ()->priority < max_priority)
+  // if (thread_current ()->priority < max_priority)
   thread_yield();
 }
 
@@ -544,7 +545,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   t->ticks_to_wait = 0;       /* p1.1: which means it is not waiting */
 
-  /* p1.2 */
+  /* p1.3 */
   t->nice = 0;
   t->recent_cpu = INT_TO_FP(0);
   
@@ -579,12 +580,14 @@ next_thread_to_run (void)
   }
   else{
     // p1.2 priority
-    if(!thread_mlfqs){
+    // if(!thread_mlfqs){
+      enum intr_level old_level= intr_disable ();
       list_reverse(&ready_list); // 这是魔法！！！！预先reverse一次，可以保证最后FIFO。不加的话，ready_list会反复正反翻转，并不雨露均沾了
       list_sort(&ready_list, thread_priority_less_than, NULL);
       // sort是升序，故reverse后变降序
       list_reverse(&ready_list);
-    }
+      intr_set_level (old_level);
+    // }
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
   }
 }
@@ -767,7 +770,7 @@ void update_load_avg(void)
   ready_threads = thread_current ()==idle_thread ?tmp:tmp+1;
 
   load_avg = FP_ADD(FP_DIV_INT(FP_MULT_INT(load_avg, 59),60), FP_DIV_INT(INT_TO_FP(ready_threads), 60));
-  printf ("ready_threads: %d   load_avg: %d\n", ready_threads, load_avg);
+  // printf ("ready_threads: %d   load_avg: %lld\n", ready_threads, load_avg);
 }
 
 
@@ -807,9 +810,4 @@ recalcu_priority(struct thread *thread, void *aux UNUSED)
   p->priority = FP_SUB(FP_ROUND_ZERO(FP_SUB(INT_TO_FP(PRI_MAX), FP_DIV_INT(p->recent_cpu, 4))), INT_TO_FP(2*p->nice));
   if(p->priority<PRI_MIN) p->priority=PRI_MIN;
   if(p->priority>PRI_MAX) p->priority=PRI_MAX;
-  
-  /* update max_priority each time a priority is updated */
-  if(p->priority > max_priority){
-      max_priority = p->priority;
-    }
 }
