@@ -139,7 +139,7 @@ The donee thread will have to recalculate its priority. In case other threads st
 
 ```mermaid
 sequenceDiagram
-	Thread 1->>Thread 1: Lck acquired
+	Thread 1->>Thread 1: Lock acquired
 	Thread 2->>Thread 1: Donate priority to Thread1
     Thread 1->>Thread 1: Intrinsic priority lowered<br>Donation not yet processed
     Thread 1->>Thread 2: Peempted by Thread 2
