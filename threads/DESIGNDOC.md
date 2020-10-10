@@ -27,7 +27,7 @@ In `timer.c` :
 static void
 decre_ticks(struct thread *thread, void* aux)
 ```
-In `thread.h` , struct thread: 
+In `struct thread`: 
 ```c
 int ticks_to_wait;  /* for p1.1:remaining ticks to wait, thread `ready` when 0 */
 ```
@@ -50,12 +50,12 @@ In `timer_interrupt()` :
 
 #### A4: How are race conditions avoided when multiple threads call timer_sleep() simultaneously?
 
-I use two lines below to enclose certain operation, so that they are atom operations:
+I disabled the interrupts during certain operation, so that they are atom operations:
 ```c
 enum intr_level old_level = intr_disable ();
 intr_set_level (old_level);
 ```
-The operations of setting `ticks_to_wait` to zero and `block` are enclosed.
+The operations of setting `ticks_to_wait` to zero and `block` are enclosed by the 2 instruction above.
 
 #### A5: How are race conditions avoided when a timer interrupt occurs during a call to timer_sleep()?
 
@@ -73,22 +73,90 @@ TA taught so in the tutorial. Sorry but I have so many docs and codes to read an
 
 #### B1: Copy here the declaration of each new or changed `struct` or `struct` member, global or static variable, `typedef`, or enumeration.  Identify the purpose of each in 25 words or less.
 
+In `sturct thread`
+```c
+int priority;                    /* Representational priority,
+                                    Used in the sorting of schedule()
+                                    May change because of donation. */
+int intrinsic_priority;          /* Intrinsic priority of the thread
+                                    Would not change because of donation */
+struct list locks_holding;       /* List of locks this thread holds
+                                    Who is waiting for me?*/
+struct lock *blocked_by_lock;    /* The lock blocking this thread
+                                    And I am waiting for whom?*/
+```
+
+In `struct lock`
+```c
+struct list_elem holder_list_elem;  /* register the lock 
+                                       to holder list of a thread */
+```
+
 #### B2: Explain the data structure used to track priority donation. Use ASCII art to diagram a nested donation.  (Alternately, submit a .png file.)
+
+The donation chain of priority is maintained by the list `locks_holding` stored in each thread. Threads receives donation from the `waiters` of the `locks` held by itself.
+
+```mermaid
+graph TB
+    th1(Thread 1<br><br>Priority: 10<Br>Donated by Thread 4<br><br>Instrinsic Priority: 2)-->lk1[Lock 1]
+    th1-->lk2[Lock 2]
+    subgraph List locks_hoding of Thread 1
+        lk1
+        lk2
+    end
+    lk1-->th2(Thread 2<br><br>Priority: 10<Br>Donated by Thread 4<br><br>Instrinsic Priority: 1)
+    lk2-->th3(Thread 3<br><br>Priority:5<br>Instrinsic Priority: 5)
+    th2-->lk3[Lock 3]
+    th2-->lk4[Lock 4]
+    subgraph List locks_hoding of Thread 2
+        lk3
+        lk4
+    end
+    lk3-->th4(Thread 4<br><br>Priority:10<br>Instrinsic Priority: 10)
+    lk4-->th5(Thread 5<br><br>Priority:8<br>Instrinsic Priority: 8)
+```
 
 ### ALGORITHMS
 
 #### B3: How do you ensure that the highest priority thread waiting for a lock, semaphore, or condition variable wakes up first?
 
+* Semaphore  
+    All the threads wanting to `down` a semaphore will be unblocked and added to `ready_list` , then sorted by the scheduler. The highest priority thread will get its chance to `down` the semaphore. The other threads will be blocked again since the semaphore can't be downed any more.
+* Lock  
+    The waiting list of a `lock` is maintained by its member `semaphore`. Priority scheduling of locks is guaranteed as the way done for semaphore.
+* Condvar  
+    Waiting list of a `condvar` is maintained independently. The waiting threads will be sorted by their priority when a `condvar` is signaled. Only one of them will be pushed to `ready_list`,
+
 #### B4: Describe the sequence of events when a call to lock_acquire() causes a priority donation.  How is nested donation handled?
 
+`lock_acquire()` causes a priority donation only if the lock can't be acquired, or to say, held by another thread. Which means that the thread wanted to acquire the lock will have to **wait for** the holder of the lock. Priority of current thread will then be donated to the holder thread. In case the holder thread is waiting for, and also, blocked by another thread, nested priority donation is carried out by iterating along the `blocked_by_lock` pointer, donating the priority till the top holder.
+
 #### B5: Describe the sequence of events when lock_release() is called on a lock that a higher-priority thread is waiting for.
+
+The donee thread will have to recalculate its priority. In case other threads still waiting for the current thread('s other possible locks), the highest priority of all the waiters of all the locks held by the current thread is collected from all the the waiting threads (also donor threads) by iterating the `waiter` list of each lock in the `locks_holding` list.
 
 ### SYNCHRONIZATION
 #### B6: Describe a potential race in thread_set_priority() and explain how your implementation avoids it.  Can you use a lock to avoid this race?
 
+```mermaid
+sequenceDiagram
+	Thread 1->>Thread 1: Lck acquired
+	Thread 2->>Thread 1: Donate priority to Thread1
+    Thread 1->>Thread 1: Intrinsic priority lowered<br>Donation not yet processed
+    Thread 1->>Thread 2: Peempted by Thread 2
+    Thread 2->>Thread 2: Lock not available
+    Thread 1-->>Thread 1: Lock can't be released
+```
+
+Interrupt is disabled until the intrinsic priority is set and the representational priority is recalculated.
+
+Lock should not be used since it will trigger priority donation.
+
 ### RATIONALE
 
 #### B7: Why did you choose this design?  In what ways is it superior to another design you considered?
+
+I once considered using a global list to store the donation relationship, but found it redundant since the donation chain is well defined by the interleaving double-linked relationship of locks and threads.
 
 ## ADVANCED SCHEDULER
 
@@ -179,10 +247,20 @@ Macros. Simple to write and faster than functions.
 
 #### In your opinion, was this assignment, or any one of the three problems in it, too easy or too hard?  Did it take too long or too little time?
 
+These three problems are not so hard but too nasty for beginners to get their hands on without proper hints.
+
 #### Did you find that working on a particular part of the assignment gave you greater insight into some aspect of OS design?
+
+This assignment involves modifying the codes for thread scheduling, which requires great insight into that aspect. I wish I had that before getting hands on this assignment. Building the insight through the procedure of this project, without extra hints, is purely exhausting.
 
 #### Is there some particular fact or hint we should give students in future quarters to help them solve the problems?  Conversely, did you find any of our guidance to be misleading?
 
+PLEASE make the toolchains provided conforming common development practices. 光是在vm上git clone就能有四五个坑，实在心累。
+
 #### Do you have any suggestions for the TAs to more effectively assist students, either for future quarters or the remaining projects?
 
+Example solution with detailed Explanation of future assignments will be helpful. Not for copy-and-paste but for insight formation.
+
 #### Any other comments?
+
+Autumn is coming! 记得加衣服！
