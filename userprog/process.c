@@ -21,7 +21,8 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
-/* Starts a new thread running a user program loaded from
+/* p2.1: 
+   Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
@@ -38,19 +39,31 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  /* p2.1: divide the copy into several tokens: `func`,`para`, `para` ...
+    char* name = 'func'
+    char **args
+   */
+  char *func, *save_ptr;
+
+  func = strtok_r (fn_copy, " ", &save_ptr);
+  char* args[2] = {func, save_ptr};
+
+  /* Create a new thread to execute FILE_NAME(p2.1: now changed to `FUNC`). */
+  tid = thread_create (func, PRI_DEFAULT, start_process, args);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
 }
 
 /* A thread function that loads a user process and starts it
-   running. */
+   running.
+   对应到`thread_creats()1里面就是kf的部分， kf->function(kf->aux)
+   这里的file_name即`process_create()`里面传入的`args` */
 static void
 start_process (void *file_name_)
 {
-  char *file_name = file_name_;
+  char *args[2] = file_name_;
+  char *file_name = args[0], *argvs = args[1];
   struct intr_frame if_;
   bool success;
 
@@ -62,9 +75,45 @@ start_process (void *file_name_)
   success = load (file_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+
+  // p2.1: parsing arguments to stack
+  int argc = 0;
+  // arg_vp: array of argument variable ponters (char*)
+  char* sp = (char*）if_.eip, **arg_vps;  
+  // push argvs
+  for (char *argv = strtok_r (NULL, " ", &argvs); argv != NULL;
+        argv = strtok_r (NULL, " ", &argvs)){
+          sp -= strlen(argv)+1;
+          arg_vps[argc++] = sp;
+          strcpy(sp, argv, strlen(argv)+2);
+          // Q: why +2 here?
+        }
+  // word align & last arg_ptr = 0
+  while(sp%4)
+    sp--;
+  sp-=4;
+  sp = 0;
+  // push arg_vps: argument pointers
+  for(int i=0; i<argc; i++){
+    sp -= 4;
+    sp = arg_vps[i];
+  }
+  // argv
+  sp-=4;
+  sp=arg_vps;
+  // argc
+  sp-=4;
+  --sp=argc;
+  // rd
+  sp-=4;
+  sp=0;
+  if_.esp = sp;
+  // ref 里面 sp+1， why?
+
+  /*但是不管成不成功都要释放之前分配的1page内存所以传入fn_copy */
+  palloc_free_page (file_name);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -76,7 +125,8 @@ start_process (void *file_name_)
   NOT_REACHED ();
 }
 
-/* Waits for thread TID to die and returns its exit status.  If
+/* p2.1: 如果是儿子，爸爸等儿子死了再return -1
+  Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
    child of the calling process, or if process_wait() has already
@@ -463,3 +513,13 @@ install_page (void *upage, void *kpage, bool writable)
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
+
+
+/* As for the `suggested order` in the Official Document:
+  p2.1: argument parsing
+  p2.2: user memo access
+  p2.3: System call infrastructure
+  p2.4: The `exit` system call
+  p2.5: The `write` system call for writing to fd 1, the system console
+  p2.6: change `process_wait()` to an infinite loop
+ */
