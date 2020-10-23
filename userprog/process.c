@@ -138,7 +138,11 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  return -1;
+  // return -1;
+  // p2.6: infinite loop, or wait forever
+  while (true){
+    int i=0;
+  }
 }
 
 /* Free the current process's resources. */
