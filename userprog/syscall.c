@@ -1,8 +1,10 @@
 #include "userprog/syscall.h"
+#include "userprog/pagedir.c"
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -17,6 +19,16 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   printf ("system call!\n");
   thread_exit (); // terminate the thread
+}
+
+// 2.2: handle access to user memory
+void check_pointer(void *buffer){
+  // invalid pointers: `null pointer, ptr to unmapped virtual memory, ptr to kernel vm`
+  // are rejected by `terminating the offending process & freeing the resources`
+  if(buffer == NULL || lookup_page(active_pd(), buffer, false) || is_kernel_vaddr(buffer)){
+    thread_exit ();
+  }
+  // 怎么free recources? 退出之后就默认free了吗？
 }
 
 void halt (void) NO_RETURN;
