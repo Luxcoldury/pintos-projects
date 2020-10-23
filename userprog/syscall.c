@@ -81,7 +81,14 @@ syscall_handler(struct intr_frame *f UNUSED)
 }
 
 void halt(void) NO_RETURN;
-void exit(int status) NO_RETURN;
+void exit(int status){
+  // UNFINISHED!!!
+  // "Do not print these messages when a kernel thread that is not a
+// user process terminates, or when the halt system call is invoked. The message is optional
+// when a process fails to load."
+  char* name = thread_current ()->name;
+  printf ("%s:exit(%d)\n", name, status);
+}
 pid_t exec(const char *file);
 int wait(pid_t);
 bool create(const char *file, unsigned initial_size);
