@@ -57,12 +57,14 @@ process_execute (const char *file_name)
 
 /* A thread function that loads a user process and starts it
    running.
-   对应到`thread_creats()1里面就是kf的部分， kf->function(kf->aux)
-   这里的file_name即`process_create()`里面传入的`args` */
+   对应到`thread_creats()`里面就是kf的部分， kf->function(kf->aux)
+   这里的 file_name_ 即`process_create()`里面传入的`args` 
+   char* args[2] = {func, save_ptr};
+*/
 static void
 start_process (void *file_name_)
 {
-  char *args[2] = file_name_;
+  char **args = file_name_;
   char *file_name = args[0], *argvs = args[1];
   struct intr_frame if_;
   bool success;
@@ -81,34 +83,36 @@ start_process (void *file_name_)
   // p2.1: parsing arguments to stack
   int argc = 0;
   // arg_vp: array of argument variable ponters (char*)
-  char* sp = (char*）if_.eip, **arg_vps;  
+  char *sp = (char*) if_.eip, **arg_vps;  
   // push argvs
   for (char *argv = strtok_r (NULL, " ", &argvs); argv != NULL;
-        argv = strtok_r (NULL, " ", &argvs)){
+        argv = strtok_r (NULL, " ", &argvs))
+        {
           sp -= strlen(argv)+1;
           arg_vps[argc++] = sp;
-          strcpy(sp, argv, strlen(argv)+2);
+          strlcpy(sp, argv, strlen(argv)+2);
           // Q: why +2 here?
         }
   // word align & last arg_ptr = 0
-  while(sp%4)
+  while(((int)sp) % 4)
     sp--;
+  *sp = (uint8_t)0;
   sp-=4;
-  sp = 0;
+  *sp = (char*)0;
   // push arg_vps: argument pointers
   for(int i=0; i<argc; i++){
     sp -= 4;
-    sp = arg_vps[i];
+    *sp = arg_vps[i];
   }
   // argv
   sp-=4;
-  sp=arg_vps;
+  *sp=arg_vps;
   // argc
   sp-=4;
-  --sp=argc;
+  *sp=argc;
   // rd
   sp-=4;
-  sp=0;
+  *sp=0;
   if_.esp = sp;
   // ref 里面 sp+1， why?
 
