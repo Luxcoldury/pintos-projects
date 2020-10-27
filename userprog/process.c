@@ -65,7 +65,7 @@ static void
 start_process (void *file_name_)
 {
   char **args = file_name_;
-  char *file_name = args[0], *argvs = args[1];
+  char *exe_name = args[0], *argvs = args[1];
   struct intr_frame if_;
   bool success;
 
@@ -74,50 +74,62 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (exe_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
   if (!success) 
     thread_exit ();
 
-  // p2.1: parsing arguments to stack
+  // p2.1: if syccess, parsing arguments to stack
   int argc = 0;
   // arg_vp: array of argument variable ponters (char*)
-  char *sp = (char*) if_.eip, **arg_vps;  
+  char *sp = (char*) if_.eip, *arg_vps[256];  
+  // push exe_name, begin from PHY_BASE-1
+  sp -= strlen(exe_name)+2;
+  arg_vps[argc++] = sp;
+  strlcpy(sp, exe_name, strlen(exe_name)+1);
   // push argvs
   for (char *argv = strtok_r (NULL, " ", &argvs); argv != NULL;
         argv = strtok_r (NULL, " ", &argvs))
         {
           sp -= strlen(argv)+1;
           arg_vps[argc++] = sp;
-          strlcpy(sp, argv, strlen(argv)+2);
+          strlcpy(sp, argv, strlen(argv)+1);
           // Q: why +2 here?
         }
-  // word align & last arg_ptr = 0
+
+  // word align
   while(((int)sp) % 4)
     sp--;
-  *sp = (uint8_t)0;
-  sp-=4;
-  *sp = (char*)0;
+  *(uint8_t*)sp = (uint8_t)0;
+
+  // last arg_ptr = 0
+  sp-=sizeof (char*);
+  *(char**)sp = (char*)0;
+
   // push arg_vps: argument pointers
-  for(int i=0; i<argc; i++){
-    sp -= 4;
-    *sp = arg_vps[i];
+  for(int i=argc-1; i>=0; i--){
+    sp -= sizeof(char*);
+    *(char**)sp = arg_vps[i];
   }
-  // argv
-  sp-=4;
-  *sp=arg_vps;
-  // argc
-  sp-=4;
-  *sp=argc;
+
+  // char** 4 bytes upward
+  sp-=sizeof(char**);
+  *((char***)sp) = sp + sizeof(char**);
+  
+  // int argc
+  sp-=sizeof(int);
+  *(int*)sp=argc;
+  
   // rd
-  sp-=4;
-  *sp=0;
+  sp-=sizeof(int);
+  *(void**)sp=0;
   if_.esp = sp;
-  // ref 里面 sp+1， why?
+  hex_dump((uintptr_t)if_.esp, if_.esp, 128, true);
+
 
   /*但是不管成不成功都要释放之前分配的1page内存所以传入fn_copy */
-  palloc_free_page (file_name);
+  palloc_free_page (exe_name);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
