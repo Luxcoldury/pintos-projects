@@ -86,11 +86,12 @@ start_process (void *file_name_)
   // p2.1: if syccess, parsing arguments to stack
   int argc = 0;
   // arg_vp: array of argument variable ponters (char*)
-  char *sp = (char*) if_.eip, *arg_vps[256];  
+  char *sp = (char*) if_.esp, *arg_vps[256];  
   // push exe_name, begin from PHY_BASE-1
   sp -= strlen(exe_name)+2;
   arg_vps[argc++] = sp;
   strlcpy(sp, exe_name, strlen(exe_name)+1);
+  // printf("\n\nargvs:%d\n\n",strlen(exe_name));
   // push argvs
   for (char *argv = strtok_r (NULL, " ", &argvs); argv != NULL;
         argv = strtok_r (NULL, " ", &argvs))
