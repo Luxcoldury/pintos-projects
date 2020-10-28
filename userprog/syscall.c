@@ -20,10 +20,10 @@ struct file_descriptor{
 
   int fd;                 // nonnegative int fd (0, 1 reserved)
   struct file *file;      // the opened file
-}
+};
 
-static struct file_descriptor*
-find_file_descriptor_by_fd(fd);
+struct file_descriptor*
+find_file_descriptor_by_fd(int fd);
 
 void syscall_init(void)
 {
@@ -126,7 +126,7 @@ pid_t exec(const char *cmd_line UNUSED)
 /* Waits for a child process pid and retrieves the child’s exit status. */
 int wait(pid_t pid UNUSED)
 {
-  return -1;
+  return process_wait(pid);
 }
 
 /* Creates a new file called file initially initial_size bytes in size. 
@@ -148,7 +148,7 @@ bool create(const char *file, unsigned initial_size)
 bool remove(const char *file)
 {
   check_pointer(file);
-  bool remove = filesys_remove(name);
+  bool remove = filesys_remove(file);
 
   return remove;
 }
@@ -171,7 +171,7 @@ int open(const char *file)
     return -1;
   }
   // add file_descriptor
-  f->fd = thread_create()->fileNum_plus2++;
+  f->fd = thread_current()->fileNum_plus2++;
   f->file = opened_file;
   list_push_back(&thread_current()->file_descriptor_list, &f->elem);
 
@@ -184,7 +184,7 @@ int filesize(int fd)
   struct file_descriptor* f = find_file_descriptor_by_fd(fd);
   if(f==NULL)
     return -1;
-  return 0;
+  return file_length(f->file) ;
 }
 
 /* Reads size bytes from the file open as fd into buffer. 
@@ -206,13 +206,14 @@ int read(int fd, void *buffer, unsigned length)
       return -1;
     }
   // 自己打开的 file, found by `fd` and thread_current()->file_descriptor_list
-  struct file_descriptor* f = find_file_by_fd (fd);
+  struct file_descriptor* f = find_file_descriptor_by_fd (fd);
   if (f == NULL)
     return -1;
   
   read_bytes = file_read (f->file, buffer, length);
   
   return read_bytes;
+}
 
 /* Writes size bytes from buffer to the open file fd. 
    Returns the number of bytes actually written, 
@@ -232,7 +233,7 @@ int write(int fd, const void *buffer, unsigned length)
       return length;
     }
   // 自己打开的 file, found by `fd` and thread_current()->file_descriptor_list
-  struct file_descriptor* f = find_file_by_fd (fd);
+  struct file_descriptor* f = find_file_descriptor_by_fd (fd);
   if (f == NULL)
     return -1;
   
@@ -246,35 +247,52 @@ int write(int fd, const void *buffer, unsigned length)
    (Thus, a position of 0 is the file’s start.) */
 void seek(int fd, unsigned position)
 {
+  struct file_descriptor* f = find_file_descriptor_by_fd(fd);
+  if(f==NULL)
+    return -1;
+  
+  file_seek(f->file, position);
 }
 
-/* Returns the position of the next byte to be read or written in open file fd, expressed in bytes
-from the beginning of the file. */
+/* Returns the position of the next byte to be read or written in open file fd,
+   expressed in bytes from the beginning of the file. */
 unsigned tell(int fd)
 {
-  return 0;
+  struct file_descriptor* f = find_file_descriptor_by_fd(fd);
+  if(f==NULL)
+    return -1;
+
+  return file_tell(f->file);
 }
 
-/* Closes file descriptor fd. Exiting or terminating a process implicitly closes all its open file
-descriptors, as if by calling this function for each one. */
+/* Closes file descriptor fd. 
+   Exiting or terminating a process implicitly closes all its open file descriptors,
+   as if by calling this function for each one. */
 void close(int fd)
 {
+  struct file_descriptor* f = find_file_descriptor_by_fd(fd);
+  if(f==NULL)
+    return -1;
+
+  file_close(f->file);
+  list_remove(&f->elem);
+  free(f);
+  /* used malloc() when open */
 }
 
-/******************************* bellow helper functions ***************************************/
+/*****************************helper functions ***************************************/
 
 /* as the name, return f with a valid file*
    otherwise return NULL */
-static 
 struct file_descriptor*
-find_file_descriptor_by_fd(fd){
-  struct list *l = thread_current()->file_descriptor_list;
+find_file_descriptor_by_fd(int fd){
+  struct list l = thread_current()->file_descriptor_list;
   struct list_elem *e;
 
   for (e = list_begin (&l); e != list_end (&l); e = list_next (e)){
       struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
       if(f->fd == fd){
-        check_pointer(f->file)
+        check_pointer(f->file); /* to validate the f->file */
         return f;
       }    
   }
