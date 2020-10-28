@@ -39,17 +39,15 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  /* p2.1: divide the copy into several tokens: `func`,`para`, `para` ...
-    char* name = 'func'
-    char **args
-   */
+  // strtok_r会修改原指针的内容
+  // 只对file_name做strtok_r
+  // fn_copy保留不变
   char *func, *save_ptr;
 
-  func = strtok_r (fn_copy, " ", &save_ptr);
-  char* args[2] = {func, save_ptr};
+  func = strtok_r ((char*)file_name, " ", &save_ptr);
 
   /* Create a new thread to execute FILE_NAME(p2.1: now changed to `FUNC`). */
-  tid = thread_create (func, PRI_DEFAULT, start_process, args);
+  tid = thread_create (func, PRI_DEFAULT, start_process, fn_copy); // fn_cpoy即"exe arg arg..."原样传给start_process
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -58,14 +56,16 @@ process_execute (const char *file_name)
 /* A thread function that loads a user process and starts it
    running.
    对应到`thread_creats()`里面就是kf的部分， kf->function(kf->aux)
-   这里的 file_name_ 即`process_create()`里面传入的`args` 
-   char* args[2] = {func, save_ptr};
+   这里的 file_name_ 即`process_create()`里面传入的`fn_copy` "exe arg arg..."
 */
 static void
 start_process (void *file_name_)
 {
-  char **args = file_name_;
-  char *exe_name = args[0], *argvs = args[1];
+  char* exe_name = file_name_;
+  char* argvs;
+  exe_name = strtok_r (exe_name, " ", &argvs);
+  // 这一步分离完之后，exe_name是"exe"，argvs是"arg arg arg..."
+
   struct intr_frame if_;
   bool success;
 
@@ -74,7 +74,10 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (exe_name, &if_.eip, &if_.esp);
+  // printf("\n\nexename:%s\n\n",exe_name);
+  // printf("\n\nargvs:%s\n\n",argvs);
+
+  success = load (exe_name, &if_.eip, &if_.esp); // 传给load的只有exe本身
 
   /* If load failed, quit. */
   if (!success) 
