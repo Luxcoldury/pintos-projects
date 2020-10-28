@@ -182,17 +182,37 @@ int open(const char *file)
 int filesize(int fd)
 {
   struct file_descriptor* f = find_file_descriptor_by_fd(fd);
+  if(f==NULL)
+    return -1;
   return 0;
 }
 
-/* Reads size bytes from the file open as fd into buffer. Returns the number of bytes actually
-read (0 at end of file), or -1 if the file could not be read (due to a condition other than end of
-file). Fd 0 reads from the keyboard using input_getc(). */
+/* Reads size bytes from the file open as fd into buffer. 
+   Returns the number of bytes actually read (0 at end of file), 
+   or -1 if the file could not be read (due to a condition other than end of file). 
+   Fd 0 reads from the keyboard using input_getc(). */
 int read(int fd, void *buffer, unsigned length)
 {
   check_pointer(buffer);
-  return 0;
-}
+  int read_bytes = 0 ;
+
+  // 输入流
+  if (fd == STDIN_FILENO)
+    input_getc((char *)buffer, (size_t)length);
+    return length;
+  // 输出流
+  if (fd == STDOUT_FILENO)
+    { 
+      return -1;
+    }
+  // 自己打开的 file, found by `fd` and thread_current()->file_descriptor_list
+  struct file_descriptor* f = find_file_by_fd (fd);
+  if (f == NULL)
+    return -1;
+  
+  read_bytes = file_read (f->file, buffer, length);
+  
+  return read_bytes;
 
 /* Writes size bytes from buffer to the open file fd. 
    Returns the number of bytes actually written, 
@@ -213,7 +233,7 @@ int write(int fd, const void *buffer, unsigned length)
     }
   // 自己打开的 file, found by `fd` and thread_current()->file_descriptor_list
   struct file_descriptor* f = find_file_by_fd (fd);
-  if (f == NULL || f->file == NULL)
+  if (f == NULL)
     return -1;
   
   written_bytes = file_write (f->file, buffer, length);
@@ -221,8 +241,9 @@ int write(int fd, const void *buffer, unsigned length)
   return written_bytes;
 }
 
-/* Changes the next byte to be read or written in open file fd to position, expressed in bytes
-from the beginning of the file. (Thus, a position of 0 is the file’s start.) */
+/* Changes the next byte to be read or written in open file fd to position, 
+   expressed in bytes from the beginning of the file. 
+   (Thus, a position of 0 is the file’s start.) */
 void seek(int fd, unsigned position)
 {
 }
