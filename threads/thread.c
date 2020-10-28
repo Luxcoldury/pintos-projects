@@ -464,6 +464,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
+  #ifdef USERPROG
+  /* Owned by userprog/process.c. */
+  list_init (&(t->file_descriptor_list));
+  t->fileNum_plus2 = 2; /* init to 2 */
+  #endif 
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);

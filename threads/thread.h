@@ -96,6 +96,9 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    int exit_status;                    /* for exit syscall */
+    struct list file_descriptor_list;   /* list of file descriptors */
+    int fileNum_plus2;                  /* 字面意思，因为fd从2开始呀 */
 #endif
 
     /* Owned by thread.c. */
