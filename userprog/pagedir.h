@@ -15,6 +15,6 @@ bool pagedir_is_accessed (uint32_t *pd, const void *upage);
 void pagedir_set_accessed (uint32_t *pd, const void *upage, bool accessed);
 void pagedir_activate (uint32_t *pd);
 
-void check_pointer(void *vaddr); //2.2
+void check_pointer(const void *vaddr); //2.2
 
 #endif /* userprog/pagedir.h */

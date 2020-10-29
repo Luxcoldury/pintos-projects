@@ -6,6 +6,7 @@
 #include "threads/pte.h"
 #include "threads/palloc.h"
 #include "threads/vaddr.h"  // for is_kernel_vaddr() in check_pointer()
+#include "threads/thread.h"  // for is_kernel_vaddr() in check_pointer()
 
 
 static uint32_t *active_pd (void);
@@ -266,7 +267,7 @@ invalidate_pagedir (uint32_t *pd)
 
 
 // 2.2: handle access to user memory
-void check_pointer(void *vaddr)
+void check_pointer(const void *vaddr)
 {
   // invalid pointers: `null pointer, ptr to unmapped virtual memory, ptr to kernel vm`
   // are rejected by `terminating the offending process & freeing the resources`

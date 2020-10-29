@@ -5,9 +5,14 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-#include "filesys/file.h"
-#include "filesys/filesys.h"
+#include "threads/malloc.h"
+#include "devices/shutdown.h" // for shutdown_power_off
+#include "filesys/file.h"     // syscall
+#include "filesys/filesys.h"  // syscall
 #include "lib/kernel/list.h"  // for fd list 
+#include "userprog/process.h"
+#include "devices/input.h"
+
 
 #define SYS_CALL_NUM_MIN 0
 #define SYS_CALL_NUM_MAX 12
@@ -54,28 +59,28 @@ syscall_handler(struct intr_frame *f UNUSED)
     exit(*(sp + 1));
     break;
   case SYS_EXEC:
-    f->eax = exec(*(sp + 1));
+    f->eax = exec((char*)*(sp + 1));
     break;
   case SYS_WAIT:
     f->eax = wait(*(sp + 1));
     break;
   case SYS_CREATE:
-    f->eax = create(*(sp + 1), *(sp + 2));
+    f->eax = create((char*)*(sp + 1), *(sp + 2));
     break;
   case SYS_REMOVE:
-    f->eax = remove(*(sp + 1));
+    f->eax = remove((char*)*(sp + 1));
     break;
   case SYS_OPEN:
-    f->eax = open(*(sp + 1));
+    f->eax = open((char*)*(sp + 1));
     break;
   case SYS_FILESIZE:
     f->eax = filesize(*(sp + 1));
     break;
   case SYS_READ:
-    f->eax = read(*(sp + 1), *(sp + 2), *(sp + 3));
+    f->eax = read(*(sp + 1), (void*)*(sp + 2), *(sp + 3));
     break;
   case SYS_WRITE:
-    f->eax = write(*(sp + 1), *(sp + 2), *(sp + 3));
+    f->eax = write(*(sp + 1), (void*)*(sp + 2), *(sp + 3));
     break;
   case SYS_SEEK:
     seek(*(sp + 1), *(sp + 2));
@@ -126,7 +131,8 @@ pid_t exec(const char *cmd_line UNUSED)
 /* Waits for a child process pid and retrieves the child’s exit status. */
 int wait(pid_t pid UNUSED)
 {
-  return process_wait(pid);
+  // return process_wait(pid);
+  return -1;
 }
 
 /* Creates a new file called file initially initial_size bytes in size. 
@@ -197,14 +203,19 @@ int read(int fd, void *buffer, unsigned length)
   int read_bytes = 0 ;
 
   // 输入流
-  if (fd == STDIN_FILENO)
-    input_getc((char *)buffer, (size_t)length);
-    return length;
-  // 输出流
-  if (fd == STDOUT_FILENO)
-    { 
-      return -1;
+  if (fd == STDIN_FILENO){
+    uint8_t *buf = buffer;
+    for(unsigned int i = 0 ; i < length ; i++){
+      buf[i] = input_getc();
+      read_bytes++;
     }
+    return read_bytes;
+  }
+    
+  // 输出流
+  if (fd == STDOUT_FILENO){ 
+    return -1;
+  }
   // 自己打开的 file, found by `fd` and thread_current()->file_descriptor_list
   struct file_descriptor* f = find_file_descriptor_by_fd (fd);
   if (f == NULL)
@@ -249,7 +260,7 @@ void seek(int fd, unsigned position)
 {
   struct file_descriptor* f = find_file_descriptor_by_fd(fd);
   if(f==NULL)
-    return -1;
+    return;
   
   file_seek(f->file, position);
 }
@@ -272,7 +283,7 @@ void close(int fd)
 {
   struct file_descriptor* f = find_file_descriptor_by_fd(fd);
   if(f==NULL)
-    return -1;
+    return;
 
   file_close(f->file);
   list_remove(&f->elem);
