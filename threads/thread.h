@@ -93,6 +93,7 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -100,6 +101,8 @@ struct thread
     struct list file_descriptor_list;   /* list of file descriptors */
     int fileNum_plus2;                  /* 字面意思，因为fd从2开始呀 */
     bool halted;                        /* whether halt is called */
+    struct list child_thread_list;//子进程
+    struct list_elem child_thread_elem;
 #endif
 
     /* Owned by thread.c. */

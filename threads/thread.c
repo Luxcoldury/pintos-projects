@@ -470,6 +470,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&(t->file_descriptor_list));
   t->fileNum_plus2 = 2; /* init to 2 */
   t->halted = false;/* by default */
+
+  list_init(&t->child_thread_list);
   #endif /* for proj2 */
 
   old_level = intr_disable ();
