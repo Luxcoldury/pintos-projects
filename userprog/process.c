@@ -175,7 +175,16 @@ process_wait (tid_t child_tid UNUSED)
 {
   // p2.6: infinite loop, or wait forever
   while (true){
-    // int i=1;
+    struct list_elem* temp;
+    struct thread* temp_thread;
+    int found=0;
+    for(temp=list_begin(&all_list);temp!=list_end(&all_list);temp=list_next(temp)){
+      temp_thread = list_entry(temp,struct thread,allelem);
+      if(temp_thread->tid==child_tid) found = 1;
+    }
+    if (!found) break;
+    thread_yield();
+    
   }
   // return -1;
 

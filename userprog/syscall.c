@@ -118,7 +118,7 @@ void exit(int status)
   /* return and print exit status (optional) */
   thread_current ()->exit_status = status;
   char *name = thread_current()->name;
-  printf("%s:exit(%d)\n", name, status);
+  printf("%s: exit(%d)\n", name, status);
 
   /* close all files */
   struct list l = thread_current()->file_descriptor_list;
