@@ -57,7 +57,7 @@ process_execute (const char *file_name)
     struct thread* temp_thread;
     for(temp=list_begin(&all_list);temp!=list_end(&all_list);temp=list_next(temp)){
       temp_thread = list_entry(temp,struct thread,allelem);
-      if(temp_thread->tid==tid) list_push_back(thread_current()->child_thread_list,temp_thread->child_thread_elem);
+      if(temp_thread->tid==tid) list_push_back(&thread_current()->child_thread_list,&temp_thread->child_thread_elem);
     }
     intr_set_level (old_level);
   }
