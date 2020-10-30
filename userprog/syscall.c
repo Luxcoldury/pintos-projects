@@ -181,12 +181,11 @@ int open(const char *file)
     exit(-1);
   }
   struct file * opened_file = filesys_open(file);
-
   if(opened_file==NULL){
     return -1;
   } 
   // else successfully open
-  struct file_descriptor* f = malloc(sizeof(struct file_descriptor));
+  struct file_descriptor* f = (struct file_descriptor*)malloc(sizeof(struct file_descriptor));
   if(f == NULL){/* malloc fail */
     file_close(opened_file);
     return -1;

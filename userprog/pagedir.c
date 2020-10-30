@@ -278,8 +278,9 @@ bool check_pointer(const void *vaddr)
   }
 
   /* for user program */
-  if(thread_tid()!=1 ){
-    if(lookup_page(active_pd(), vaddr, false)==NULL){
+  if(thread_tid()!=1){
+    if(lookup_page(active_pd(), vaddr, false)==NULL){/* 不应该用这个函数但是过的tc多一些 */
+    // if(pagedir_get_page(active_pd(), vaddr)==NULL){
       // printf("bad user pointer: unmapped!\n");
       return false;
     }

@@ -111,8 +111,9 @@ start_process (void *file_name_)
   // push exe_name, begin from PHY_BASE-1
   
   // push argvs
+  // sp-=1;
   for (int i = argc-1; i >=0; i--){
-    sp -= strlen(args[i])+1;
+    sp -= strlen(args[i])+3;
     arg_vps[i] = sp;
     strlcpy(sp, args[i], strlen(args[i])+1);
     // printf("\n sp: %s, &sp: %p // arg[%d]\n", sp, sp, i);
@@ -122,7 +123,7 @@ start_process (void *file_name_)
   // word align
   while(((int)sp) % 4)
     sp--;
-  *(uint8_t*)sp = (uint8_t)0;
+  // *(uint8_t*)sp = (uint8_t)0;
   // printf("\n &sp: %p // word align\n", sp);
 
   // char*
