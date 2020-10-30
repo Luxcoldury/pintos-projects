@@ -48,8 +48,20 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME(p2.1: now changed to `FUNC`). */
   tid = thread_create (func, PRI_DEFAULT, start_process, fn_copy); // fn_cpoy即"exe arg arg..."原样传给start_process
-  if (tid == TID_ERROR)
+  if (tid == TID_ERROR){
     palloc_free_page (fn_copy); 
+  }else{
+    enum intr_level old_level = intr_disable ();
+    // 把子进程加到列表里
+    struct list_elem* temp;
+    struct thread* temp_thread;
+    for(temp=list_begin(&all_list);temp!=list_end(&all_list);temp=list_next(temp)){
+      temp_thread = list_entry(temp,struct thread,allelem);
+      if(temp_thread->tid==tid) list_push_back(thread_current()->child_thread_list,temp_thread->child_thread_elem);
+    }
+    intr_set_level (old_level);
+  }
+
   return tid;
 }
 
