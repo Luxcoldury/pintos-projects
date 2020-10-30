@@ -142,3 +142,7 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 #endif /* threads/thread.h */
+
+/* List of all processes.  Processes are added to this list
+   when they are first scheduled and removed when they exit. */
+struct list all_list;
