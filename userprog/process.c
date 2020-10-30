@@ -161,7 +161,7 @@ start_process (void *file_name_)
 }
 
 /* p2.1: 如果是儿子，爸爸等儿子死了再return -1
-  Waits for thread TID to die and returns its exit status.  If
+   Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
    child of the calling process, or if process_wait() has already
@@ -174,9 +174,11 @@ int
 process_wait (tid_t child_tid UNUSED) 
 {
   // p2.6: infinite loop, or wait forever
+  // printf("process %d wait %d \n", thread_tid(), child_tid);
   while (true){
     // int i=1;
   }
+  // printf("process wait done\n");
   // return -1;
 
 }
