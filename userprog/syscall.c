@@ -41,6 +41,7 @@ syscall_handler(struct intr_frame *f UNUSED)
   printf("system call!\n");
 
   // 确保拿到了一个valid pointer
+  // printf("check f!\n");
   check_pointer(f);
 
   // get sysCall number and validate it
@@ -164,6 +165,7 @@ bool remove(const char *file)
    or -1 if the file could not be opened. */
 int open(const char *file)
 {
+  // printf ("check opening file ptr!\n");
   check_pointer(file);
   struct file * opened_file = filesys_open(file);
 
@@ -199,6 +201,7 @@ int filesize(int fd)
    Fd 0 reads from the keyboard using input_getc(). */
 int read(int fd, void *buffer, unsigned length)
 {
+  // printf("check read ptr!\n");
   check_pointer(buffer);
   int read_bytes = 0 ;
 
@@ -231,6 +234,7 @@ int read(int fd, void *buffer, unsigned length)
    which may be less than size if some bytes could not be written. */
 int write(int fd, const void *buffer, unsigned length)
 {
+  // printf("check write ptr!\n");
   check_pointer(buffer);
   int written_bytes = 0 ;
 

@@ -271,9 +271,19 @@ void check_pointer(const void *vaddr)
 {
   // invalid pointers: `null pointer, ptr to unmapped virtual memory, ptr to kernel vm`
   // are rejected by `terminating the offending process & freeing the resources`
-  if (vaddr == NULL || lookup_page(active_pd(), vaddr, false) || is_kernel_vaddr(vaddr))
+  if (vaddr == NULL  )
   {
-    thread_exit();
+    // printf("bad user pointer: NULL!\n");
+    thread_exit ();
   }
+  if(lookup_page(active_pd(), vaddr, false)==NULL){
+    // printf("bad user pointer: unmapped!\n");
+    thread_exit ();
+  }
+  /* if(is_kernel_vaddr(vaddr)){
+    printf("bad user pointer: in kernel!\n");
+    thread_exit ();
+  } */
   // Q: 怎么free recources? 退出之后就默认free了吗？
+  // A: 交给syscall exit!
 }
