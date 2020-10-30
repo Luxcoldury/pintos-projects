@@ -21,7 +21,8 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
-/* Starts a new thread running a user program loaded from
+/* p2.1: 
+   Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
@@ -38,19 +39,45 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
+  // strtok_r会修改原指针的内容
+  // 只对file_name做strtok_r
+  // fn_copy保留不变
+  char *func, *save_ptr;
+
+  func = strtok_r ((char*)file_name, " ", &save_ptr);
+
+  /* Create a new thread to execute FILE_NAME(p2.1: now changed to `FUNC`). */
+  tid = thread_create (func, PRI_DEFAULT, start_process, fn_copy); // fn_cpoy即"exe arg arg..."原样传给start_process
+  if (tid == TID_ERROR){
     palloc_free_page (fn_copy); 
+  }else{
+    enum intr_level old_level = intr_disable ();
+    // 把子进程加到列表里
+    struct list_elem* temp;
+    struct thread* temp_thread;
+    for(temp=list_begin(&all_list);temp!=list_end(&all_list);temp=list_next(temp)){
+      temp_thread = list_entry(temp,struct thread,allelem);
+      if(temp_thread->tid==tid) list_push_back(&thread_current()->child_thread_list,&temp_thread->child_thread_elem);
+    }
+    intr_set_level (old_level);
+  }
+
   return tid;
 }
 
 /* A thread function that loads a user process and starts it
-   running. */
+   running.
+   对应到`thread_creats()`里面就是kf的部分， kf->function(kf->aux)
+   这里的 file_name_ 即`process_create()`里面传入的`fn_copy` "exe arg arg..."
+*/
 static void
 start_process (void *file_name_)
 {
-  char *file_name = file_name_;
+  char* exe_name = file_name_;
+  char* argvs;
+  exe_name = strtok_r (exe_name, " ", &argvs);
+  // 这一步分离完之后，exe_name是"exe"，argvs是"arg arg arg..."
+
   struct intr_frame if_;
   bool success;
 
@@ -59,12 +86,81 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  // printf("\n\n----exename:%s----\n\n",exe_name);
+  // printf("\n\n----argvs:%s----\n\n",argvs);
+
+  success = load (exe_name, &if_.eip, &if_.esp); // 传给load的只有exe本身
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+
+  // p2.1: if syccess, parsing arguments to stack
+  int argc = 0;
+  // arg_vp: array of argument variable ponters (char*)
+  char *sp = (char*) if_.esp, *arg_vps[256];
+
+  // use args[256] to reverse arguments
+  char *args[256];  
+  args[argc++] = exe_name;
+  for (char *argv = strtok_r (NULL, " ", &argvs); argv != NULL;
+        argv = strtok_r (NULL, " ", &argvs)){
+          args[argc++] = argv;
+        }
+
+  // push exe_name, begin from PHY_BASE-1
+  
+  // push argvs
+  for (int i = argc-1; i >=0; i--){
+    sp -= strlen(args[i])+1;
+    arg_vps[i] = sp;
+    strlcpy(sp, args[i], strlen(args[i])+1);
+    // printf("\n sp: %s, &sp: %p // arg[%d]\n", sp, sp, i);
+  }
+    
+  // uint8_t 0
+  // word align
+  while(((int)sp) % 4)
+    sp--;
+  *(uint8_t*)sp = (uint8_t)0;
+  // printf("\n &sp: %p // word align\n", sp);
+
+  // char*
+  // last arg_ptr = 0
+  sp-=sizeof (char*);
+  *(char**)sp = (char*)0;
+  // printf("\n sp: %s, &sp: %p // char* last arg_ptr\n", sp, sp);
+
+  // char* 
+  // push arg_vps: argument pointers
+  for(int i=argc-1; i>=0; i--){
+    sp -= sizeof(char*);
+    *(char**)sp = arg_vps[i];
+    // printf("\n sp: %p, at : %p // arg[%d]= %s\n", *(char**)sp, sp, i, *(char**)sp);
+  }
+
+  // char** 
+  // 4 bytes upward
+  sp-=sizeof(char**);
+  *((char***)sp) = (char**)(sp + sizeof(char**));
+  // printf("\n sp: %p, &sp: %p // char** &arg[0]\n", *(char**)sp, sp);
+  
+  // int 
+  // argc
+  sp-=sizeof(int);
+  *(int*)sp=argc;
+  // printf("\n sp: %d, &sp: %p // argc\n",*sp, sp);
+  
+  // void* 
+  // rd
+  sp-=sizeof(int);
+  *(void**)sp=0;
+  if_.esp = sp;
+  // hex_dump((uintptr_t)if_.esp, if_.esp, 128, true);
+
+
+  /*但是不管成不成功都要释放之前分配的1page内存所以传入fn_copy */
+  palloc_free_page (exe_name);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -76,7 +172,8 @@ start_process (void *file_name_)
   NOT_REACHED ();
 }
 
-/* Waits for thread TID to die and returns its exit status.  If
+/* p2.1: 如果是儿子，爸爸等儿子死了再return -1
+   Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
    child of the calling process, or if process_wait() has already
@@ -88,7 +185,23 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  return -1;
+  // p2.6: infinite loop, or wait forever
+  // printf("process %d wait %d \n", thread_tid(), child_tid);
+  while (true){
+    struct list_elem* temp;
+    struct thread* temp_thread;
+    int found=0;
+    for(temp=list_begin(&all_list);temp!=list_end(&all_list);temp=list_next(temp)){
+      temp_thread = list_entry(temp,struct thread,allelem);
+      if(temp_thread->tid==child_tid) found = 1;
+    }
+    if (!found) break;
+    thread_yield();
+    
+  }
+  // printf("process wait done\n");
+  // return -1;
+
 }
 
 /* Free the current process's resources. */
@@ -98,10 +211,14 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  // 如果是kernel
+  if(thread_tid() == 1) return;
+  // 下面是userprog
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
-  if (pd != NULL) 
+  if (pd != NULL)
     {
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
@@ -463,3 +580,13 @@ install_page (void *upage, void *kpage, bool writable)
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
+
+
+/* As for the `suggested order` in the Official Document:
+  p2.1: argument parsing
+  p2.2: user memo access
+  p2.3: System call infrastructure
+  p2.4: The `exit` system call
+  p2.5: The `write` system call for writing to fd 1, the system console
+  p2.6: change `process_wait()` to an infinite loop
+ */

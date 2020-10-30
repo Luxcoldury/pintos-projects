@@ -245,7 +245,8 @@ strtok_r (char *s, const char *delimiters, char **save_ptr)
     s = *save_ptr;
   ASSERT (s != NULL);
 
-  /* Skip any DELIMITERS at our current position. */
+  /* 处理头：Skip any DELIMITERS at our current position. */
+  /* 对于当前s指向的char: while (delimiters == *s)直到s不指向delimiter  */
   while (strchr (delimiters, *s) != NULL) 
     {
       /* strchr() will always return nonnull if we're searching
@@ -260,7 +261,8 @@ strtok_r (char *s, const char *delimiters, char **save_ptr)
       s++;
     }
 
-  /* Skip any non-DELIMITERS up to the end of the string. */
+  /* 处理尾：Skip any non-DELIMITERS up to the end of the string. */
+  /* 强行在当前non-DELIMITER后面加\0 */
   token = s;
   while (strchr (delimiters, *s) == NULL)
     s++;

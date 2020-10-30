@@ -93,9 +93,16 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    int exit_status;                    /* for exit syscall */
+    struct list file_descriptor_list;   /* list of file descriptors */
+    int fileNum_plus2;                  /* 字面意思，因为fd从2开始呀 */
+    bool halted;                        /* whether halt is called */
+    struct list child_thread_list;//子进程
+    struct list_elem child_thread_elem;
 #endif
 
     /* Owned by thread.c. */
@@ -139,3 +146,7 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 #endif /* threads/thread.h */
+
+/* List of all processes.  Processes are added to this list
+   when they are first scheduled and removed when they exit. */
+struct list all_list;

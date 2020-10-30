@@ -24,9 +24,9 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-/* List of all processes.  Processes are added to this list
-   when they are first scheduled and removed when they exit. */
-static struct list all_list;
+// /* List of all processes.  Processes are added to this list
+//    when they are first scheduled and removed when they exit. */
+// static struct list all_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -285,7 +285,7 @@ thread_exit (void)
 #ifdef USERPROG
   process_exit ();
 #endif
-
+  // printf ("after process_exit()");
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
@@ -463,6 +463,16 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+
+  #ifdef USERPROG
+  /* Owned by userprog/process.c. */
+  t->exit_status = 0;/* by default */
+  list_init (&(t->file_descriptor_list));
+  t->fileNum_plus2 = 2; /* init to 2 */
+  t->halted = false;/* by default */
+
+  list_init(&t->child_thread_list);
+  #endif /* for proj2 */
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

@@ -5,6 +5,9 @@
 #include "threads/init.h"
 #include "threads/pte.h"
 #include "threads/palloc.h"
+#include "threads/vaddr.h"  // for is_kernel_vaddr() in check_pointer()
+#include "threads/thread.h"  // for is_kernel_vaddr() in check_pointer()
+
 
 static uint32_t *active_pd (void);
 static void invalidate_pagedir (uint32_t *);
@@ -260,4 +263,28 @@ invalidate_pagedir (uint32_t *pd)
          "Translation Lookaside Buffers (TLBs)". */
       pagedir_activate (pd);
     } 
+}
+
+
+// 2.2: handle access to user memory
+bool check_pointer(const void *vaddr)
+{
+  // invalid pointers: `null pointer, ptr to unmapped virtual memory, ptr to kernel vm`
+  // are rejected by `terminating the offending process & freeing the resources`
+  if (vaddr == NULL  )
+  {
+    // printf("bad user pointer: NULL!\n");
+    return false;
+  }
+
+  /* for user program */
+  if(thread_tid()!=1 ){
+    if(lookup_page(active_pd(), vaddr, false)==NULL){
+      // printf("bad user pointer: unmapped!\n");
+      return false;
+    }
+  }
+  return true;
+  // Q: 怎么free recources? 退出之后就默认free了吗？
+  // A: 交给syscall exit!
 }
