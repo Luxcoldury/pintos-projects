@@ -99,6 +99,7 @@ struct thread
     int exit_status;                    /* for exit syscall */
     struct list file_descriptor_list;   /* list of file descriptors */
     int fileNum_plus2;                  /* 字面意思，因为fd从2开始呀 */
+    bool halted;                        /* whether halt is called */
 #endif
 
     /* Owned by thread.c. */

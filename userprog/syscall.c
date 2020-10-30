@@ -12,6 +12,8 @@
 #include "lib/kernel/list.h"  // for fd list 
 #include "userprog/process.h"
 #include "devices/input.h"
+#include "threads/vaddr.h"  // for is_kernel_vaddr() to check ptr
+
 
 
 #define SYS_CALL_NUM_MIN 0
@@ -46,6 +48,9 @@ syscall_handler(struct intr_frame *f UNUSED)
 
   // get sysCall number and validate it
   int *sp = (int *)f->esp;
+  if(!is_user_vaddr(sp)){
+    exit(-1);
+  }
   int sysCallNum = *sp;
   ASSERT(sysCallNum >= SYS_CALL_NUM_MIN && sysCallNum <= SYS_CALL_NUM_MAX);
   
@@ -102,6 +107,7 @@ syscall_handler(struct intr_frame *f UNUSED)
 void halt(void)
 {
   // printf ("halt!");
+  thread_current()->halted = true;
   shutdown_power_off();
 }
 
@@ -110,35 +116,28 @@ waits for it (see below), this is the status that will be returned. Conventional
 indicates success and nonzero values indicate errors. */
 void exit(int status)
 {
-  // UNFINISHED!!!
-  // "Do not print these messages when a kernel thread that is not a
-  // user process terminates, or when the halt system call is invoked. The message is optional
-  // when a process fails to load."
-  
   /* return and print exit status (optional) */
   thread_current ()->exit_status = status;
-  char *name = thread_current()->name;
-  printf("%s: exit(%d)\n", name, status);
-
-  /* close all files */
-  struct list l = thread_current()->file_descriptor_list;
-  while (!list_empty (&l))
-  {
-    struct list_elem* e = list_begin (&l);
-    close (list_entry (e, struct file_descriptor, elem)->fd);
+  
+  /* Do not print when a kernel thread that is not a
+  user process terminates, or when the halt system call is invoked. */
+  if(!thread_current ()->halted && thread_tid() != 1){
+    printf("%s: exit(%d)\n", thread_current()->name, status);
   }
 
   thread_exit();
 }
 
-/* Runs the executable whose name is given in cmd_line, passing any given arguments, and
-returns the new process’s program ID (pid). Must return pid -1, which otherwise should
-not be a valid pid, if the program cannot load or run for any reason. Thus, the parent
-process cannot return from the exec until it knows whether the child process successfully
-loaded its executable. You must use appropriate synchronization to ensure this. */
+/* Runs the executable whose name is given in cmd_line, 
+   passing any given arguments, and returns the new process’s program ID (pid). 
+   Must return pid -1 if the program cannot load or run for any reason. 
+   Thus, the parent process cannot return from the exec 
+   until it knows whether the child process successfully loaded its executable. 
+   You must use appropriate synchronization to ensure this. */
 pid_t exec(const char *cmd_line UNUSED)
 {
-  return 0;
+  // return process_execute(cmd_line);
+  return -1;
 }
 
 /* Waits for a child process pid and retrieves the child’s exit status. */

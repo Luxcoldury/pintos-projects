@@ -466,9 +466,11 @@ init_thread (struct thread *t, const char *name, int priority)
 
   #ifdef USERPROG
   /* Owned by userprog/process.c. */
+  t->exit_status = 0;/* by default */
   list_init (&(t->file_descriptor_list));
   t->fileNum_plus2 = 2; /* init to 2 */
-  #endif 
+  t->halted = false;/* by default */
+  #endif /* for proj2 */
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
