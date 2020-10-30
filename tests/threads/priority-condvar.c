@@ -51,20 +51,3 @@ priority_condvar_thread (void *aux UNUSED)
   msg ("Thread %s woke up.", thread_name ());
   lock_release (&lock);
 }
-
-/* 
-  第35行时，所有子thread都被block在第50行，等待signal
-  之后的运行顺序是:
-  
-  38、39、40 主线程acquire锁，发signal导致重schedule
-  主pri=1，子线程抢占，pri最高的子线程抢到signal，其他继续等
-  50处cond获得signal，想acquire锁但lock在主线程手上，向主线程donate之后阻塞等锁，回到主线程，主pri=子pri
-  主线程41 release锁，失去donation，主pri=1，release导致重schedule，刚才的子线程得以抢占
-  50成功acquire锁，51、52release锁，子线程结束
-  其他子线程仍在等signal，主pri=1，进入下一循环
-
-  结论：
-  cond_wait不产生donation，因为是（release锁->block->获得signal->acquire锁），block时并不是锁的holder
-  发signal要重schedule
-
-*/

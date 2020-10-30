@@ -32,10 +32,6 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
-/* For p1.2 priority
-   比较cond的waiter（sema）的waiter（thread）的pri */
-static bool cond_priority_less_than(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -117,14 +113,10 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  while (!list_empty (&sema->waiters)) // 来叭！全都unblock！公平地在schedule面前颤抖叭！
+  if (!list_empty (&sema->waiters)) 
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
   sema->value++;
-
-  // up之后，本来被sema阻塞的高pri线程应该抢占，要reschedule
-  thread_yield ();
-  
   intr_set_level (old_level);
 }
 
@@ -204,40 +196,8 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  enum intr_level old_level = intr_disable ();
-  // p1.2 priority
-  // 如果acquire不成功，捐赠pri给holder
-  // 没有holder就不会有waiter，就一定能acquire。有holder则一定不能acquire，需要捐赠
-  // holder的优先级一定小于等于current_thread
-
-  if (lock->holder != NULL && !thread_mlfqs) {
-    // 我在等lock！
-    thread_current()->blocked_by_lock = lock;
-    // 把pri捐给lock，lock再捐给等lock的lock
-    struct lock *donee_holds_this_lock = lock;
-    while(donee_holds_this_lock!=NULL) {
-      struct thread *donee = donee_holds_this_lock->holder;
-      // 如果捐不动了，后面的就都不用捐了
-      if (thread_current()->priority <= donee->priority) break;
-      // 捐！
-      donee->priority = thread_current()->priority;
-      // 下一个！
-      donee_holds_this_lock = donee->blocked_by_lock;
-    }
-  }
-
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
-
-  // p1.2 priority
-  if(!thread_mlfqs){
-    // 等完了，不再等谁了
-    thread_current()->blocked_by_lock = NULL;
-    // 把lock添加到自己的holding列表里
-    list_push_back(&thread_current()->locks_holding, &lock->holder_list_elem);
-  }
-
-  intr_set_level (old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -272,15 +232,6 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   lock->holder = NULL;
-  // p1.2 priority
-  if(!thread_mlfqs){
-    // 从thread的holding列表里去掉这个lock
-    list_remove(&lock->holder_list_elem);
-    // 更新pri
-    update_priority();
-
-    // 重新计算捐赠给别人的优先级？我在等谁？如果我是waiter我不应该处于block状态么？我没在等别人
-  }
   sema_up (&lock->semaphore);
 }
 
@@ -365,19 +316,9 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
-  if (!list_empty (&cond->waiters)){
-
-    // p1.2 priority
-    if(!thread_mlfqs){
-      // cond没法交给schedule选，因为被淘汰的thread只会回到sema的waiters里，并不会回到cond的waiters里
-      list_sort(&cond->waiters, cond_priority_less_than, NULL);
-      // sort是升序，故reverse后变降序
-      list_reverse(&cond->waiters);
-    }
-    
+  if (!list_empty (&cond->waiters)) 
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
-  }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
@@ -394,16 +335,4 @@ cond_broadcast (struct condition *cond, struct lock *lock)
 
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
-}
-
-/* 比较cond的waiter（sema）的waiter（thread）的pri
-   a,b 是 waiter（sema）的 List_elem
-   提取出sema
-   从sema的waiter列表里获得thread
-   拿到pri */
-static bool
-cond_priority_less_than(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
-  int p_a = list_entry(list_front(&(&list_entry(a, struct semaphore_elem, elem)->semaphore)->waiters), struct thread, elem)->priority; // 我这是写了什么鬼魔法阵_(:з」∠)_
-  int p_b = list_entry(list_front(&(&list_entry(b, struct semaphore_elem, elem)->semaphore)->waiters), struct thread, elem)->priority;
-  return p_a < p_b;
 }

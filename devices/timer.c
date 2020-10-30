@@ -7,8 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-
-
+  
 /* See [8254] for hardware details of the 8254 timer chip. */
 
 #if TIMER_FREQ < 19
@@ -90,18 +89,11 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  // assert arises if Interrupts not turned on.
-  ASSERT (intr_get_level () == INTR_ON);
-  if (ticks<=0){
-    return;
-  }
-  // make sure atom operation
-  enum intr_level old_level = intr_disable ();
-  struct thread *p = thread_current();
-  p->ticks_to_wait = ticks;
-  thread_block();  
+  int64_t start = timer_ticks ();
 
-  intr_set_level (old_level);
+  ASSERT (intr_get_level () == INTR_ON);
+  while (timer_elapsed (start) < ticks) 
+    thread_yield ();
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -174,52 +166,13 @@ timer_print_stats (void)
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
 
-
-/* p1.1: decrease `ticks_to_wait` for the waiting threads */
-static void
-decre_ticks(struct thread *thread, void* aux UNUSED)
-{
-  struct thread *p = thread;
-  if (p->ticks_to_wait==0)       /* not blocked */
-    return;
-  /* blocked */
-  enum intr_level old_level = intr_disable ();
-  (p->ticks_to_wait) --;
-
-  // if `ticks_to_wait` eqauls 0, then unlock
-  if (p->ticks_to_wait==0){
-    thread_unblock(p);
-  }
-  intr_set_level (old_level);
-}
-
-/* Timer interrupt handler. which happens each `timer_ticks` */
+/* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-
-  /* p1.1: each time ticks++, all positive `ticks_to_wait`-- */
-  thread_foreach(decre_ticks, NULL);  
-
-  /* p1.3: update recent_cpu, load_avg, ready_threads frequently */
-  if(thread_mlfqs){
-    /* per tick: running thread `recent_cpu` += 1 */
-    current_recent_cpu_increse_1();
-    /* per second：update */
-    if(timer_ticks() % TIMER_FREQ == 0){
-      /* recompute load_avg and recent_cpu per second */
-      update_load_avg ();
-      thread_foreach(update_recent_cpu, NULL); 
-    }
-    /* every fourth clock tick: recalculate priority once for every thread */    
-    if(timer_ticks() % 4 == 0){
-      recalcu_priority(thread_current(), NULL); 
-    }
-  }
 }
-
 
 /* Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */
