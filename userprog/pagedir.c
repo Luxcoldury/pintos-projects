@@ -267,23 +267,24 @@ invalidate_pagedir (uint32_t *pd)
 
 
 // 2.2: handle access to user memory
-void check_pointer(const void *vaddr)
+bool check_pointer(const void *vaddr)
 {
   // invalid pointers: `null pointer, ptr to unmapped virtual memory, ptr to kernel vm`
   // are rejected by `terminating the offending process & freeing the resources`
   if (vaddr == NULL  )
   {
     // printf("bad user pointer: NULL!\n");
-    thread_exit ();
+    return false;
   }
-  if(lookup_page(active_pd(), vaddr, false)==NULL){
-    // printf("bad user pointer: unmapped!\n");
-    thread_exit ();
+
+  /* for user program */
+  if(thread_tid()!=1 ){
+    if(lookup_page(active_pd(), vaddr, false)==NULL){
+      // printf("bad user pointer: unmapped!\n");
+      return false;
+    }
   }
-  /* if(is_kernel_vaddr(vaddr)){
-    printf("bad user pointer: in kernel!\n");
-    thread_exit ();
-  } */
+  return true;
   // Q: 怎么free recources? 退出之后就默认free了吗？
   // A: 交给syscall exit!
 }

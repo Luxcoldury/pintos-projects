@@ -42,13 +42,9 @@ syscall_handler(struct intr_frame *f UNUSED)
 {
   // printf("system call!\n");
 
-  // 确保拿到了一个valid pointer
-  // printf("check f!\n");
-  check_pointer(f);
-
   // get sysCall number and validate it
   int *sp = (int *)f->esp;
-  if(!is_user_vaddr(sp)){
+  if(!check_pointer(sp)){
     exit(-1);
   }
   int sysCallNum = *sp;
@@ -153,7 +149,9 @@ int wait(pid_t pid UNUSED)
    opening the new file is a separate operation which would require a `open` system call. */
 bool create(const char *file, unsigned initial_size)
 {
-  check_pointer(file);
+  if (!check_pointer(file)){
+    exit(-1);
+  }
   bool create = filesys_create(file, initial_size);
 
   return create;
@@ -165,7 +163,9 @@ bool create(const char *file, unsigned initial_size)
    and removing an open file does not close it. */
 bool remove(const char *file)
 {
-  check_pointer(file);
+  if (!check_pointer(file)){
+    exit(-1);
+  }
   bool remove = filesys_remove(file);
 
   return remove;
@@ -177,7 +177,9 @@ bool remove(const char *file)
 int open(const char *file)
 {
   // printf ("check opening file ptr!\n");
-  check_pointer(file);
+  if (!check_pointer(file)){
+    exit(-1);
+  }
   struct file * opened_file = filesys_open(file);
 
   if(opened_file==NULL){
@@ -213,7 +215,9 @@ int filesize(int fd)
 int read(int fd, void *buffer, unsigned length)
 {
   // printf("check read ptr!\n");
-  check_pointer(buffer);
+  if (!check_pointer(buffer)){
+    exit(-1);
+  }
   int read_bytes = 0 ;
 
   // 输入流
@@ -246,7 +250,9 @@ int read(int fd, void *buffer, unsigned length)
 int write(int fd, const void *buffer, unsigned length)
 {
   // printf("check write ptr!\n");
-  check_pointer(buffer);
+  if (!check_pointer(buffer)){
+    exit(-1);
+  }
   int written_bytes = 0 ;
 
   // 输入流
@@ -306,7 +312,7 @@ void close(int fd)
   /* used malloc() when open */
 }
 
-/*****************************helper functions ***************************************/
+/********************** helper functions ***************************************/
 
 /* as the name, return f with a valid file*
    otherwise return NULL */
@@ -317,8 +323,7 @@ find_file_descriptor_by_fd(int fd){
 
   for (e = list_begin (&l); e != list_end (&l); e = list_next (e)){
       struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
-      if(f->fd == fd){
-        check_pointer(f->file); /* to validate the f->file */
+      if(f->fd == fd && check_pointer(f->file)){
         return f;
       }    
   }
