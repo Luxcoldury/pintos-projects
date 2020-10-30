@@ -186,6 +186,10 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  // 如果是kernel
+  if(thread_tid() == 1) return;
+  // 下面是userprog
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
