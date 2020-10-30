@@ -38,7 +38,7 @@ void syscall_init(void)
 static void
 syscall_handler(struct intr_frame *f UNUSED)
 {
-  printf("system call!\n");
+  // printf("system call!\n");
 
   // 确保拿到了一个valid pointer
   // printf("check f!\n");
@@ -101,6 +101,7 @@ syscall_handler(struct intr_frame *f UNUSED)
    This should be seldom used, because you lose some information about possible deadlock situations, etc. */
 void halt(void)
 {
+  // printf ("halt!");
   shutdown_power_off();
 }
 
@@ -113,9 +114,20 @@ void exit(int status)
   // "Do not print these messages when a kernel thread that is not a
   // user process terminates, or when the halt system call is invoked. The message is optional
   // when a process fails to load."
+  
+  /* return and print exit status (optional) */
   thread_current ()->exit_status = status;
   char *name = thread_current()->name;
   printf("%s:exit(%d)\n", name, status);
+
+  /* close all files */
+  struct list l = thread_current()->file_descriptor_list;
+  while (!list_empty (&l))
+  {
+    struct list_elem* e = list_begin (&l);
+    close (list_entry (e, struct file_descriptor, elem)->fd);
+  }
+
   thread_exit();
 }
 

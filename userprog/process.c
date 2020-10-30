@@ -74,8 +74,8 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  printf("\n\n----exename:%s----\n\n",exe_name);
-  printf("\n\n----argvs:%s----\n\n",argvs);
+  // printf("\n\n----exename:%s----\n\n",exe_name);
+  // printf("\n\n----argvs:%s----\n\n",argvs);
 
   success = load (exe_name, &if_.eip, &if_.esp); // 传给load的只有exe本身
 
@@ -86,63 +86,65 @@ start_process (void *file_name_)
   // p2.1: if syccess, parsing arguments to stack
   int argc = 0;
   // arg_vp: array of argument variable ponters (char*)
-  char *sp = (char*) if_.esp, *arg_vps[256];  
-  // push exe_name, begin from PHY_BASE-1
-  sp -= strlen(exe_name)+2;
-  arg_vps[argc++] = sp;
-  strlcpy(sp, exe_name, strlen(exe_name)+1);
-  printf("\n sp: %s, &sp: %p // exe_name\n", sp, sp);
-  // printf("\n\nargvs:%d\n\n",strlen(exe_name));
-  // push argvs
-  for (char *argv = strtok_r (NULL, " ", &argvs); argv != NULL;
-        argv = strtok_r (NULL, " ", &argvs))
-        {
-          sp -= strlen(argv)+1;
-          arg_vps[argc++] = sp;
-          strlcpy(sp, argv, strlen(argv)+1);
-          printf("\n sp: %s, &sp: %p // arg[%d]\n", sp, sp, argc-1);
+  char *sp = (char*) if_.esp, *arg_vps[256];
 
+  // use args[256] to reverse arguments
+  char *args[256];  
+  args[argc++] = exe_name;
+  for (char *argv = strtok_r (NULL, " ", &argvs); argv != NULL;
+        argv = strtok_r (NULL, " ", &argvs)){
+          args[argc++] = argv;
         }
 
+  // push exe_name, begin from PHY_BASE-1
+  
+  // push argvs
+  for (int i = argc-1; i >=0; i--){
+    sp -= strlen(args[i])+1;
+    arg_vps[i] = sp;
+    strlcpy(sp, args[i], strlen(args[i])+1);
+    // printf("\n sp: %s, &sp: %p // arg[%d]\n", sp, sp, i);
+  }
+    
   // uint8_t 0
   // word align
   while(((int)sp) % 4)
     sp--;
   *(uint8_t*)sp = (uint8_t)0;
-  printf("\n &sp: %p // word align\n", sp);
+  // printf("\n &sp: %p // word align\n", sp);
 
   // char*
   // last arg_ptr = 0
   sp-=sizeof (char*);
   *(char**)sp = (char*)0;
-  printf("\n sp: %s, &sp: %p // char* last arg_ptr\n", sp, sp);
+  // printf("\n sp: %s, &sp: %p // char* last arg_ptr\n", sp, sp);
 
   // char* 
   // push arg_vps: argument pointers
   for(int i=argc-1; i>=0; i--){
     sp -= sizeof(char*);
     *(char**)sp = arg_vps[i];
-    printf("\n sp: %p, at : %p // arg[%d]= %s\n", *(char**)sp, sp, i, *(char**)sp);
+    // printf("\n sp: %p, at : %p // arg[%d]= %s\n", *(char**)sp, sp, i, *(char**)sp);
   }
 
   // char** 
   // 4 bytes upward
   sp-=sizeof(char**);
   *((char***)sp) = (char**)(sp + sizeof(char**));
-  printf("\n sp: %p, &sp: %p // char** &arg[0]\n", *(char**)sp, sp);
+  // printf("\n sp: %p, &sp: %p // char** &arg[0]\n", *(char**)sp, sp);
   
   // int 
   // argc
   sp-=sizeof(int);
   *(int*)sp=argc;
-  printf("\n sp: %d, &sp: %p // argc\n",*sp, sp);
+  // printf("\n sp: %d, &sp: %p // argc\n",*sp, sp);
   
   // void* 
   // rd
   sp-=sizeof(int);
   *(void**)sp=0;
   if_.esp = sp;
-  hex_dump((uintptr_t)if_.esp, if_.esp, 128, true);
+  // hex_dump((uintptr_t)if_.esp, if_.esp, 128, true);
 
 
   /*但是不管成不成功都要释放之前分配的1page内存所以传入fn_copy */
