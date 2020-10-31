@@ -234,21 +234,20 @@ int open(const char *file)
   if(opened_file==NULL){
     return -1;
   } 
-  // else file successfully open, create fd
+  if(is_file_executable(opened_file)){
+    file_deny_write(opened_file);
+  }
+  // else successfully open
   struct file_descriptor* f = (struct file_descriptor*)malloc(sizeof(struct file_descriptor));
   if(f == NULL){/* malloc fail */
     file_close(opened_file);
     return -1;
   }
-  // fd successfully created, add file_descriptor
+  // add file_descriptor
   f->fd = thread_current()->fileNum_plus2++;
   f->file = opened_file;
   list_push_front(&thread_current()->file_descriptor_list, &f->elem);
-  
-  /* if executable, deny write */
-  if(is_file_executable(opened_file)){
-    file_deny_write(opened_file);
-  }
+
   return f->fd;
 }
 
@@ -305,7 +304,7 @@ int write(int fd, const void *buffer, unsigned length)
   if (!check_pointer(buffer)){
     exit(-1);
   }
-  
+
   // 输入流
   if (fd == STDIN_FILENO)
     return -1;
@@ -317,12 +316,9 @@ int write(int fd, const void *buffer, unsigned length)
     }
   // 自己打开的 file, found by `fd` and thread_current()->file_descriptor_list
   struct file_descriptor* f = find_file_descriptor_by_fd (fd);
-  if (f == NULL|| !is_user_vaddr(f->file) )
+  if (f == NULL)
     return -1;
-
-  if(is_file_executable(f->file)){
-    return 0;
-  }
+  
   return file_write (f->file, buffer, length);
 }
 
@@ -359,7 +355,7 @@ void close(int fd)
     return;
 
   enum intr_level old_level = intr_disable ();
-  list_remove(&(f->elem));
+  list_remove(&f->elem);
   intr_set_level (old_level);
   file_close(f->file);
   free(f);
