@@ -347,8 +347,6 @@ unsigned tell(int fd)
    as if by calling this function for each one. */
 void close(int fd)
 {
-  if(fd<2)
-    return;
   struct file_descriptor* f = find_file_descriptor_by_fd(fd);
   if(f==NULL)
     return;
