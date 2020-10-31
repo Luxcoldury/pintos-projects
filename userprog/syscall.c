@@ -132,15 +132,15 @@ void exit(int status)
    You must use appropriate synchronization to ensure this. */
 pid_t exec(const char *cmd_line UNUSED)
 {
-  // return process_execute(cmd_line);
-  return -1;
+  return process_execute(cmd_line);
+  // return -1;
 }
 
 /* Waits for a child process pid and retrieves the child’s exit status. */
 int wait(pid_t pid UNUSED)
 {
-  // return process_wait(pid);
-  return -1;
+  return process_wait(pid);
+  // return -1;
 }
 
 /* Creates a new file called file initially initial_size bytes in size. 
@@ -193,7 +193,7 @@ int open(const char *file)
   // add file_descriptor
   f->fd = thread_current()->fileNum_plus2++;
   f->file = opened_file;
-  list_push_back(&thread_current()->file_descriptor_list, &f->elem);
+  list_push_front(&thread_current()->file_descriptor_list, &f->elem);
 
   return f->fd;
 }
@@ -301,12 +301,16 @@ unsigned tell(int fd)
    as if by calling this function for each one. */
 void close(int fd)
 {
+  if(fd<2)
+    return;
   struct file_descriptor* f = find_file_descriptor_by_fd(fd);
   if(f==NULL)
     return;
 
-  file_close(f->file);
+  enum intr_level old_level = intr_disable ();
   list_remove(&f->elem);
+  intr_set_level (old_level);
+  file_close(f->file);
   free(f);
   /* used malloc() when open */
 }
@@ -320,12 +324,17 @@ find_file_descriptor_by_fd(int fd){
   struct list l = thread_current()->file_descriptor_list;
   struct list_elem *e;
 
+  if (list_empty(&l)) return NULL;
+
+  enum intr_level old_level = intr_disable ();
   for (e = list_begin (&l); e != list_end (&l); e = list_next (e)){
       struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
       if(f->fd == fd && check_pointer(f->file)){
+        intr_set_level (old_level);
         return f;
       }    
   }
 
+  intr_set_level (old_level);
   return NULL;
 }

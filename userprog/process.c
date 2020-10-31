@@ -188,20 +188,29 @@ process_wait (tid_t child_tid UNUSED)
 {
   // p2.6: infinite loop, or wait forever
   // printf("process %d wait %d \n", thread_tid(), child_tid);
-  while (true){
-    struct list_elem* temp;
-    struct thread* temp_thread;
-    int found=0;
-    for(temp=list_begin(&all_list);temp!=list_end(&all_list);temp=list_next(temp)){
-      temp_thread = list_entry(temp,struct thread,allelem);
-      if(temp_thread->tid==child_tid) found = 1;
+  struct list* child_list = &thread_current()->child_thread_list;
+  struct list_elem* temp;
+  struct thread* temp_thread;
+  int found=0;
+
+  if (list_empty(child_list)) return -1;
+
+  for(temp=list_begin(child_list);temp!=list_end(child_list);temp=list_next(temp)){
+    temp_thread = list_entry(temp,struct thread,child_thread_elem);
+    if(temp_thread->tid==child_tid){
+      found = 1;
+      break;
     }
-    if (!found) break;
-    thread_yield();
-    
   }
+
+  if (!found){
+    return -1;
+  }
+
+  list_remove(&temp_thread->child_thread_elem);
+  sema_down(&temp_thread->being_waited_by_father_sema);
   // printf("process wait done\n");
-  // return -1;
+  return temp_thread->exit_status;
 
 }
 
