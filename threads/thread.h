@@ -105,6 +105,7 @@ struct thread
     struct list child_thread_list;//子进程list
     struct list_elem child_thread_elem;
     struct semaphore being_waited_by_father_sema; //爸爸在等你（x）
+    struct file* owner_file;
 #endif
 
     /* Owned by thread.c. */

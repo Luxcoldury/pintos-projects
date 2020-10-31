@@ -44,7 +44,7 @@ When in `process_execute`, parsing the exe_name to the process, we check the len
 
 #### A4: In Pintos, the kernel separates commands into a executable name and arguments.  In Unix-like systems, the shell does this separation.  Identify at least two advantages of the Unix approach.
 
-1. Making variable substitution possible
+1. Making argument substitution possible
 2. Making pipelining possible
 
 ## SYSTEM CALLS
@@ -112,27 +112,38 @@ find_file_descriptor_by_fd(int fd){
 
 First check the valid pointer. Then use the fd to decide what the open file is. The 0, 1 are already reserved for input and output. And I write a function to find the corresponding file descriptor (thus the open file) by the fd number bu traversing the thread `struct list file_descriptor_list`. Then use functions from the `file.c`, `filesys.c` to finish reading and writing.
 
-#### B4: Suppose a system call causes a full page (4,096 bytes) of datato be copied from user space into the kernel. What is the leastand the greatest possible number of inspections of the page table(e.g. calls to pagedir_get_page()) that might result? What aboutfor a system call that only copies 2 bytes of data?  Is there roomfor improvement in these numbers, and how much?
+#### B4: Suppose a system call causes a full page (4,096 bytes) of data to be copied from user space into the kernel. What is the least and the greatest possible number of inspections of the page table(e.g. calls to pagedir_get_page()) that might result? What about for a system call that only copies 2 bytes of data? Is there room for improvement in these numbers, and how much?
 
-*TBC*
+As long as the size of the data is less or equal than one full page and larger than 1 byte, it may fit into 1 single page or 2 neighbouring pages. The least number of inspections of the page table should be 1 and the greatest number should be 2, for both full page of data or only 2 bytes of data. The address of the data is not guaranteed to be aligned to the page, there may be no room for improvement.
 
 #### B5: Briefly describe your implementation of the `wait` system call and how it interacts with process termination.
 
-*TBC*
+The `wait` system call directly calls function `process_wait`. In function `process_wait`, the thread handle accroding to the tid is fetched from the child process list. Then the father process will try to down the `being_waited_by_father_sema` semaphore of the child process and thus blocked until the semaphore being uped when the child process exits. The child thread will be removed from the child process list (, or more specifically, the ok-to-wait child process list) before father thread trying to down the semaphore, so that each child process can only be waited once. If a child thread is not in the list (,or if the list is empty), it must be waited beforehand and then not be waited again.
 
 #### B6: Any access to user program memory at a user-specified address can fail due to a bad pointer value. Such accesses must cause the process to be terminated. System calls are fraught with such accesses, e.g. a `write` system call requires reading the system call number from the user stack, then each of the call's three arguments, then an arbitrary amount of user memory, and any of these can fail at any point. This poses a design and error-handling problem: how do you best avoid obscuring the primary function of code in a morass of error-handling?  Furthermore, when an error is detected, how do you ensure that all temporarily allocated resources (locks, buffers, etc.) are freed? In a few paragraphs, describe the strategy or strategies you adopted for managing these issues. Give an example.
 
-*TBC*
+The 2 functions `check_pointer` and `check_pointers` are implemented to check whether a bad pointer value is provided by the user program. In the `syscall_handler` and each system call handling function, `check_pointer` is called to check the pointers. If the pointer is checked to be bad, the temporary resources within the syscall function (files, buffers, locks, etc.) will be freed by the corresponding exception handling branch while the resources obtained by the child process outside the syscall function (other files, user pages, stacks, etc.) will be freed by calling the `exit` system call.
+
+For example, in the very begining of the `syscall_handler` function:
+```c
+  int *sp = (int *)f->esp;
+  if(!check_pointer(sp)){
+    exit(-1);
+  }
+```
+The stack pointer, also the pointer of the syscall number is checked by the `check_pointer` function. If the stack pointer provided is not in the user memory space, `exit` will be called immediately.
+
+In system calls like `SYS_CREATE` , `SYS_READ` , `SYS_WRITE` , `SYS_SEEK` , multiple consequent pointers have to be checked. The `check_pointers` function is implemented for caarying out the check more conveniently.
 
 ### SYNCHRONIZATION 
 
 #### B7: The `exec` system call returns -1 if loading the new executable fails, so it cannot return before the new executable has completed loading.  How does your code ensure this?  How is the load success/failure status passed back to the thread that calls "exec"?
 
-*TBC*
+I tried to use a semaphore to prevent the `process_exec` function from returning the tid (, and also adding the child process into the child process list) before the loading of the excutable is completed. The success/failure status will be stored into a variable owned by the father process once the `load` function returns. Then the father process will be waked from blocking and check whether the loading of executable is successed or not. Unfortunately, this sometime causes the `exec` function being blocked forever and has to be disabled to not disrupt other features.
 
 #### B8: Consider parent process P with child process C. How do you ensure proper synchronization and avoid race conditions when P calls wait(C) before C exits? After C exits?  How do you ensure that all resources are freed in each case?  How about when P terminates without waiting, before C exits? After C exits? Are there any special cases?
 
-*TBC*
+The parent process waits for the child process by trying to down a semaphore which will be uped by the child process on its exit. Since it doesn't matter whether the semaphore is uped after or before the down, the `exit` can happen before `wait`. The freeing of the resources is carryed out in the `exit` function of the child process, which is not affected by the status of the parent process. Since the semaphore is stored in the `struct thread` of the child process, the early termination of parent process won't affect the `exit` of its child processes.
 
 ### RATIONALE 
 #### B9: Why did you choose to implement access to user memory from the kernel in the way that you did?
@@ -182,12 +193,18 @@ Not hard but too busy.
 
 #### Did you find that working on a particular part of the assignment gave you greater insight into some aspect of OS design?
 
+The implementation of syscall involves modifying context infomation of processes including stack pointers. Debuging the code with context switch helps understanding pintos a lot.
+
 #### Is there some particular fact or hint we should give students in future quarters to help them solve the problems?  Conversely, did you find any of our guidance to be misleading?
+
+The exit of user program and the termination of the kernel's `wait` function on the user program is carried out seperatedly. No testcase will be pass until a minimal `wait` function is implemented.
 
 #### Do you have any suggestions for the TAs to more effectively assist students, either for future quarters or the remaining projects?
 
+emmmm. Try persuade professor Ying prepose the lecture corresponded to the project or postpone the lecture-corresponding project so that they can meet? Lectures can teaches us the knowledge, only before we learn them during the project.
+
 #### Any other comments?
 
-Is it possible to provide us with a Markdown version
+Is it possible to provide us with a Markdown version template
  of the designdoc?\
 Thx

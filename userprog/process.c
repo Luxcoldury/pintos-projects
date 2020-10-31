@@ -220,6 +220,7 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  file_close (cur->owner_file);
 
   // 如果是kernel
   if(thread_tid() == 1) return;
@@ -437,11 +438,11 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   success = true;
   /* deny writes to exacutables */
-  set_file_executable(file);
+  file_deny_write(file);
+  thread_current()->owner_file = file;
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
   return success;
 }
 
