@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -101,8 +102,9 @@ struct thread
     struct list file_descriptor_list;   /* list of file descriptors */
     int fileNum_plus2;                  /* 字面意思，因为fd从2开始呀 */
     bool halted;                        /* whether halt is called */
-    struct list child_thread_list;//子进程
+    struct list child_thread_list;//子进程list
     struct list_elem child_thread_elem;
+    struct semaphore being_waited_by_father_sema; //爸爸在等你（x）
 #endif
 
     /* Owned by thread.c. */
