@@ -246,7 +246,7 @@ int open(const char *file)
   // add file_descriptor
   f->fd = thread_current()->fileNum_plus2++;
   f->file = opened_file;
-  list_push_back(&thread_current()->file_descriptor_list, &f->elem);
+  list_push_front(&thread_current()->file_descriptor_list, &f->elem);
 
   return f->fd;
 }
@@ -354,8 +354,10 @@ void close(int fd)
   if(f==NULL)
     return;
 
-  file_close(f->file);
+  enum intr_level old_level = intr_disable ();
   list_remove(&f->elem);
+  intr_set_level (old_level);
+  file_close(f->file);
   free(f);
   /* used malloc() when open */
 }
