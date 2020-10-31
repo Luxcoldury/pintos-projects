@@ -23,8 +23,7 @@ These documents help me understand the project requirements:
 
 ####  A1: Copy here the declaration of each new or changed `struct` or `struct` member, global or static variable, `typedef`, or enumeration.  Identify the purpose of each in 25 words or less.
 
-None.\
-**TBC**
+No `struct` changed nor new global or static variable introduced in the implementation of argument parsing and passing.
 
 ### ALGORITHMS 
 
@@ -45,9 +44,8 @@ When in `process_execute`, parsing the exe_name to the process, we check the len
 
 #### A4: In Pintos, the kernel separates commands into a executable name and arguments.  In Unix-like systems, the shell does this separation.  Identify at least two advantages of the Unix approach.
 
-*TBC*
-1. \
-2. \
+1. Making variable substitution possible
+2. Making pipelining possible
 
 ## SYSTEM CALLS
 
