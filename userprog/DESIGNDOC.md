@@ -99,7 +99,7 @@ find_file_descriptor_by_fd(int fd){
       struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
       if(f->fd == fd && check_pointer(f->file)){
         return f;
-      }    
+      }  
   }
 
   return NULL;
@@ -116,7 +116,7 @@ First check the valid pointer. Then use the fd to decide what the open file is. 
 
 *TBC*
 
-#### B5: Briefly describe your implementation of the "wait" system call and how it interacts with process termination.
+#### B5: Briefly describe your implementation of the `wait` system call and how it interacts with process termination.
 
 *TBC*
 
@@ -126,7 +126,7 @@ First check the valid pointer. Then use the fd to decide what the open file is. 
 
 ### SYNCHRONIZATION 
 
-#### B7: The "exec" system call returns -1 if loading the new executable fails, so it cannot return before the new executable has completed loading.  How does your code ensure this?  How is the load success/failure status passed back to the thread that calls "exec"?
+#### B7: The `exec` system call returns -1 if loading the new executable fails, so it cannot return before the new executable has completed loading.  How does your code ensure this?  How is the load success/failure status passed back to the thread that calls "exec"?
 
 *TBC*
 
@@ -137,16 +137,40 @@ First check the valid pointer. Then use the fd to decide what the open file is. 
 ### RATIONALE 
 #### B9: Why did you choose to implement access to user memory from the kernel in the way that you did?
 
-More simple, I only need to write a function to validate access and call `exit(-1)` immediatly if the user pointer is invalid.
+As the Pintos Document says, there are 2 ways to choose for accessing 
+the user memory from the kernel:
+> There are at least two reasonable ways to do this correctly. \
+> The first method is to verify the validity of a user-provided pointer,
+>  then dereference it. If you choose this route, you’ll
+> want to look at the functions in ‘userprog/pagedir.c’ and in ‘threads/vaddr.h’. 
+> This is the simplest way to handle user memory access.\
+> The second method is to check only that a user pointer points below
+>  PHYS_BASE, then dereference it. An invalid user pointer will cause 
+> a “page fault” that you can handle by
+> modifying the code for page_fault() in ‘userprog/exception.c’. 
+> This technique is normally faster because it takes advantage of 
+> the processor’s MMU, so it tends to be used in real kernels (including Linux).
+
+I choose the latter one because it is more simple, 
+I only need to write a function to validate access and call 
+`exit(-1)` immediatly if the user pointer is invalid.
 
 #### B10: What advantages or disadvantages can you see to your design for file descriptors?
 
-+ advantages
-+ disadvantages
++ advantages: \
+    It is simple. \
+    I add only one list and several struct members to
+    manage the correspondence between the fd number and the files.
++ disadvantages: \
+    It could be slow. \
+    For my design, to get a file through a fd integer, you need to
+    to call the function `find_file_descriptor_by_fd()`, which is 
+    of O(n) complexity. This could have been released. 
+
   
 #### B11: The default tid_t to pid_t mapping is the identity mapping. If you changed it, what advantages are there to your approach?
 
-**TBC 鬼知道哦，抄抄汪汪汪**
+I did not change that.
 
 ## SURVEY QUESTIONS
 

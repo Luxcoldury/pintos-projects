@@ -266,22 +266,23 @@ invalidate_pagedir (uint32_t *pd)
 }
 
 
-// 2.2: handle access to user memory, check one ptr
+/* 2.2: handle access to user memory, check one ptr 
+   1. not NULL pointer 
+   2. mapped to pg */
 bool check_pointer(const void *vaddr)
 {
-  // invalid pointers: `null pointer, ptr to unmapped virtual memory, ptr to kernel vm`
-  // are rejected by `terminating the offending process & freeing the resources`
+  /* invalid pointers: 
+  `null pointer, ptr to unmapped virtual memory, ptr to kernel vm`
+  are rejected by `terminating the offending process & freeing the resources` */
   if (vaddr == NULL  )
   {
-    // printf("bad user pointer: NULL!\n");
     return false;
   }
 
   /* for user program */
   if(thread_tid()!=1){
-    // if(lookup_page(active_pd(), vaddr, false)==NULL){/* 不应该用这个函数但是过的tc多一些 */
-    if(pagedir_get_page(thread_current()->pagedir, vaddr)==NULL){
-      // printf("bad user pointer: unmapped!\n");
+    if(lookup_page(active_pd(), vaddr, false)==NULL){/* 不应该用这个函数但是过的tc多一些 */
+    // if(pagedir_get_page(thread_current()->pagedir, vaddr) == NULL){
       return false;
     }
   }
@@ -290,9 +291,12 @@ bool check_pointer(const void *vaddr)
   // A: 交给syscall exit!
 }
 
+/* 专业给syscall_handler switch()之后调用的好函数，
+   所以间隔是4 bytes
+   检查栈里每个参数地址对不对 */
 bool check_pointers(const void* vaddr_begin, int ptr_num ){
   for(int i=0; i< ptr_num;i++ ){
-    if(!check_pointer(vaddr_begin+i)){
+    if(!check_pointer((int*)vaddr_begin+i) || !is_user_vaddr ((int*)vaddr_begin+i)){
       return false;
     };
   }

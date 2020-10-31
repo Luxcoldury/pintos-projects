@@ -109,7 +109,7 @@ syscall_handler(struct intr_frame *f UNUSED)
 
   case SYS_READ:
     // printf("check read ptr!\n");
-    if (!check_pointers(sp+1, 3)){
+    if (!check_pointers(sp+1, 3)|| !is_user_vaddr (sp+1)){
       exit(-1);
     }
     f->eax = read(*(sp + 1), (void*)*(sp + 2), *(sp + 3));
@@ -266,8 +266,11 @@ int filesize(int fd)
    Fd 0 reads from the keyboard using input_getc(). */
 int read(int fd, void *buffer, unsigned length)
 {
-  int read_bytes = 0 ;
+  if (!check_pointer(buffer)){
+    exit(-1);
+  }
 
+  int read_bytes = 0 ;
   // 输入流
   if (fd == STDIN_FILENO){
     uint8_t *buf = buffer;
@@ -285,7 +288,7 @@ int read(int fd, void *buffer, unsigned length)
   // 自己打开的 file, found by `fd` and thread_current()->file_descriptor_list
   struct file_descriptor* f = find_file_descriptor_by_fd (fd);
   if (f == NULL)
-    exit(-1) ;
+    return -1;
   
   read_bytes = file_read (f->file, buffer, length);
   
@@ -377,7 +380,7 @@ find_file_descriptor_by_fd(int fd){
   for (struct list_elem *e = list_begin (&l); e != list_end (&l); e = list_next (e))
   {
     struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
-      if(f->fd == fd && f->file!=NULL){
+      if(f->fd == fd && check_pointer(f->file)){
         return f;
       }    
   }
