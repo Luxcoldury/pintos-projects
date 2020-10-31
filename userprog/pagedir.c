@@ -130,7 +130,7 @@ pagedir_get_page (uint32_t *pd, const void *uaddr)
 {
   uint32_t *pte;
 
-  ASSERT (is_user_vaddr (uaddr));
+  // if (is_user_vaddr (uaddr)) return NULL;
   
   pte = lookup_page (pd, uaddr, false);
   if (pte != NULL && (*pte & PTE_P) != 0)
@@ -266,7 +266,7 @@ invalidate_pagedir (uint32_t *pd)
 }
 
 
-// 2.2: handle access to user memory
+// 2.2: handle access to user memory, check one ptr
 bool check_pointer(const void *vaddr)
 {
   // invalid pointers: `null pointer, ptr to unmapped virtual memory, ptr to kernel vm`
@@ -279,8 +279,8 @@ bool check_pointer(const void *vaddr)
 
   /* for user program */
   if(thread_tid()!=1){
-    if(lookup_page(active_pd(), vaddr, false)==NULL){/* 不应该用这个函数但是过的tc多一些 */
-    // if(pagedir_get_page(active_pd(), vaddr)==NULL){
+    // if(lookup_page(active_pd(), vaddr, false)==NULL){/* 不应该用这个函数但是过的tc多一些 */
+    if(pagedir_get_page(thread_current()->pagedir, vaddr)==NULL){
       // printf("bad user pointer: unmapped!\n");
       return false;
     }
@@ -288,4 +288,13 @@ bool check_pointer(const void *vaddr)
   return true;
   // Q: 怎么free recources? 退出之后就默认free了吗？
   // A: 交给syscall exit!
+}
+
+bool check_pointers(const void* vaddr_begin, int ptr_num ){
+  for(int i=0; i< ptr_num;i++ ){
+    if(!check_pointer(vaddr_begin+i)){
+      return false;
+    };
+  }
+  return true;
 }

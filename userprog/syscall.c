@@ -57,40 +57,89 @@ syscall_handler(struct intr_frame *f UNUSED)
   case SYS_HALT:
     halt();
     break;
+
   case SYS_EXIT:
+    if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     exit(*(sp + 1));
     break;
+
   case SYS_EXEC:
+    if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     f->eax = exec((char*)*(sp + 1));
     break;
+
   case SYS_WAIT:
+    if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     f->eax = wait(*(sp + 1));
     break;
+
   case SYS_CREATE:
+    if(!check_pointers(sp+1, 2) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     f->eax = create((char*)*(sp + 1), *(sp + 2));
     break;
+
   case SYS_REMOVE:
+    if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     f->eax = remove((char*)*(sp + 1));
     break;
+
   case SYS_OPEN:
+    if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     f->eax = open((char*)*(sp + 1));
     break;
+
   case SYS_FILESIZE:
+    if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     f->eax = filesize(*(sp + 1));
     break;
+
   case SYS_READ:
+    // printf("check read ptr!\n");
+    if (!check_pointers(sp+1, 3)){
+      exit(-1);
+    }
     f->eax = read(*(sp + 1), (void*)*(sp + 2), *(sp + 3));
     break;
+
   case SYS_WRITE:
+    if(!check_pointers(sp+1, 3) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     f->eax = write(*(sp + 1), (void*)*(sp + 2), *(sp + 3));
     break;
+
   case SYS_SEEK:
+    if(!check_pointers(sp+1, 2) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     seek(*(sp + 1), *(sp + 2));
     break;
+
   case SYS_TELL:
+    if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     f->eax = tell(*(sp + 1));
     break;
+
   case SYS_CLOSE:
+    if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
     close(*(sp + 1));
     break;
   }
@@ -132,15 +181,15 @@ void exit(int status)
    You must use appropriate synchronization to ensure this. */
 pid_t exec(const char *cmd_line UNUSED)
 {
-  // return process_execute(cmd_line);
-  return -1;
+  return process_execute(cmd_line);
+  // return -1;
 }
 
 /* Waits for a child process pid and retrieves the child’s exit status. */
 int wait(pid_t pid UNUSED)
 {
-  // return process_wait(pid);
-  return -1;
+  return process_wait(pid);
+  // return -1;
 }
 
 /* Creates a new file called file initially initial_size bytes in size. 
@@ -163,7 +212,7 @@ bool create(const char *file, unsigned initial_size)
    and removing an open file does not close it. */
 bool remove(const char *file)
 {
-  if (!check_pointer(file)){
+  if (file==NULL){
     exit(-1);
   }
   bool remove = filesys_remove(file);
@@ -181,9 +230,13 @@ int open(const char *file)
     exit(-1);
   }
   struct file * opened_file = filesys_open(file);
+  
   if(opened_file==NULL){
     return -1;
   } 
+  if(is_file_executable(opened_file)){
+    file_deny_write(opened_file);
+  }
   // else successfully open
   struct file_descriptor* f = (struct file_descriptor*)malloc(sizeof(struct file_descriptor));
   if(f == NULL){/* malloc fail */
@@ -213,10 +266,6 @@ int filesize(int fd)
    Fd 0 reads from the keyboard using input_getc(). */
 int read(int fd, void *buffer, unsigned length)
 {
-  // printf("check read ptr!\n");
-  if (!check_pointer(buffer)){
-    exit(-1);
-  }
   int read_bytes = 0 ;
 
   // 输入流
@@ -236,7 +285,7 @@ int read(int fd, void *buffer, unsigned length)
   // 自己打开的 file, found by `fd` and thread_current()->file_descriptor_list
   struct file_descriptor* f = find_file_descriptor_by_fd (fd);
   if (f == NULL)
-    return -1;
+    exit(-1) ;
   
   read_bytes = file_read (f->file, buffer, length);
   
@@ -252,7 +301,6 @@ int write(int fd, const void *buffer, unsigned length)
   if (!check_pointer(buffer)){
     exit(-1);
   }
-  int written_bytes = 0 ;
 
   // 输入流
   if (fd == STDIN_FILENO)
@@ -268,9 +316,7 @@ int write(int fd, const void *buffer, unsigned length)
   if (f == NULL)
     return -1;
   
-  written_bytes = file_write (f->file, buffer, length);
-  
-  return written_bytes;
+  return file_write (f->file, buffer, length);
 }
 
 /* Changes the next byte to be read or written in open file fd to position, 
@@ -317,12 +363,19 @@ void close(int fd)
    otherwise return NULL */
 struct file_descriptor*
 find_file_descriptor_by_fd(int fd){
-  struct list l = thread_current()->file_descriptor_list;
-  struct list_elem *e;
+  /* validate fd in [2, thread_current()->fileNum_plus2] */
+  if(fd<2 || fd>thread_current()->fileNum_plus2) 
+    return NULL;
 
-  for (e = list_begin (&l); e != list_end (&l); e = list_next (e)){
-      struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
-      if(f->fd == fd && check_pointer(f->file)){
+  struct list l = thread_current()->file_descriptor_list;
+  if(list_empty(&l)) 
+    return NULL;
+
+  // printf ("\nsize: %d\n",list_size(&l));
+  for (struct list_elem *e = list_begin (&l); e != list_end (&l); e = list_next (e))
+  {
+    struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
+      if(f->fd == fd && f->file!=NULL){
         return f;
       }    
   }
