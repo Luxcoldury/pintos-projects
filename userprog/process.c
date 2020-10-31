@@ -436,6 +436,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
+  /* deny writes to exacutables */
+  set_file_executable(file);
 
  done:
   /* We arrive here whether the load is successful or not. */

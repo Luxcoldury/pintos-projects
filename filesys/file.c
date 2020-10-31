@@ -9,6 +9,7 @@ struct file
     struct inode *inode;        /* File's inode. */
     off_t pos;                  /* Current position. */
     bool deny_write;            /* Has file_deny_write() been called? */
+    bool executable;            /* p2: deny write to executable */
   };
 
 /* Opens a file for the given INODE, of which it takes ownership,
@@ -165,4 +166,24 @@ file_tell (struct file *file)
 {
   ASSERT (file != NULL);
   return file->pos;
+}
+
+/* set file->executable as true
+   if loaded successfully. */
+void
+set_file_executable (struct file *file)
+{
+  ASSERT (file != NULL);
+  if (!file->executable){
+    file->executable = true;
+  }
+}
+
+/* return file->executable,
+   if true, deny write(). */
+bool
+is_file_executable (struct file *file)
+{
+  ASSERT (file != NULL);
+  return file->executable;
 }
