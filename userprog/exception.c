@@ -140,6 +140,10 @@ page_fault (struct intr_frame *f)
      be assured of reading CR2 before it changed). */
   intr_enable ();
 
+   printf("%s: exit(%d)\n", thread_current()->name, -1);
+   thread_exit();
+
+
   /* Count page faults. */
   page_fault_cnt++;
 
