@@ -21,19 +21,14 @@
 
 static void syscall_handler(struct intr_frame *);
 
-// the nunnegative int handle file descriptor
-struct file_descriptor{
-  struct list_elem elem;  // for list operation
-
-  int fd;                 // nonnegative int fd (0, 1 reserved)
-  struct file *file;      // the opened file
-};
+struct lock filesys_lock;
 
 struct file_descriptor*
 find_file_descriptor_by_fd(int fd);
 
 void syscall_init(void)
 {
+  lock_init (&filesys_lock);
   intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -151,8 +146,6 @@ syscall_handler(struct intr_frame *f UNUSED)
    This should be seldom used, because you lose some information about possible deadlock situations, etc. */
 void halt(void)
 {
-  // printf ("halt!");
-  thread_current()->halted = true;
   shutdown_power_off();
 }
 
@@ -161,14 +154,13 @@ waits for it (see below), this is the status that will be returned. Conventional
 indicates success and nonzero values indicate errors. */
 void exit(int status)
 {
-  /* return and print exit status (optional) */
-  thread_current ()->exit_status = status;
+  thread_current ()->pcb->return_status = status;
   
   /* Do not print when a kernel thread that is not a
   user process terminates, or when the halt system call is invoked. */
-  if(!thread_current ()->halted && thread_tid() != 1){
-    printf("%s: exit(%d)\n", thread_current()->name, status);
-  }
+  // if(!thread_current ()->halted && thread_tid() != 1){
+  printf("%s: exit(%d)\n", thread_current()->name, status);
+  // }
 
   thread_exit();
 }
@@ -181,7 +173,10 @@ void exit(int status)
    You must use appropriate synchronization to ensure this. */
 pid_t exec(const char *cmd_line UNUSED)
 {
-  return process_execute(cmd_line);
+  lock_acquire (&filesys_lock);
+  pid_t pid = process_execute(cmd_line);
+  lock_release(&filesys_lock);
+  return pid;
   // return -1;
 }
 
@@ -201,7 +196,9 @@ bool create(const char *file, unsigned initial_size)
   if (!check_pointer(file)){
     exit(-1);
   }
+  lock_acquire (&filesys_lock);
   bool create = filesys_create(file, initial_size);
+  lock_release(&filesys_lock);
 
   return create;
 }
@@ -215,7 +212,9 @@ bool remove(const char *file)
   if (file==NULL){
     exit(-1);
   }
+  lock_acquire (&filesys_lock);
   bool remove = filesys_remove(file);
+  lock_release(&filesys_lock);
 
   return remove;
 }
@@ -225,24 +224,28 @@ bool remove(const char *file)
    or -1 if the file could not be opened. */
 int open(const char *file)
 {
+  struct file_descriptor* f = palloc_get_page(0);
+  if(f == NULL){/* malloc fail */
+    return -1;
+  }
+
   // printf ("check opening file ptr!\n");
   if (!check_pointer(file)){
+    palloc_free_page(f);
     exit(-1);
   }
+  lock_acquire (&filesys_lock);
   struct file * opened_file = filesys_open(file);
+  lock_release(&filesys_lock);
   
   if(opened_file==NULL){
+    palloc_free_page(f);
     return -1;
   } 
-  if(is_file_executable(opened_file)){
-    file_deny_write(opened_file);
-  }
+  // if(is_file_executable(opened_file)){
+  //   file_deny_write(opened_file);
+  // }
   // else successfully open
-  struct file_descriptor* f = (struct file_descriptor*)malloc(sizeof(struct file_descriptor));
-  if(f == NULL){/* malloc fail */
-    file_close(opened_file);
-    return -1;
-  }
   // add file_descriptor
   f->fd = thread_current()->fileNum_plus2++;
   f->file = opened_file;
@@ -254,10 +257,17 @@ int open(const char *file)
 /* Returns the size, in bytes, of the file open as fd. */
 int filesize(int fd)
 {
+  lock_acquire (&filesys_lock);
   struct file_descriptor* f = find_file_descriptor_by_fd(fd);
-  if(f==NULL)
+  if(f==NULL){
+    lock_release(&filesys_lock);
     return -1;
-  return file_length(f->file) ;
+  }
+
+  int f_size = file_length(f->file);
+  lock_release(&filesys_lock);
+
+  return f_size;
 }
 
 /* Reads size bytes from the file open as fd into buffer. 
@@ -266,9 +276,11 @@ int filesize(int fd)
    Fd 0 reads from the keyboard using input_getc(). */
 int read(int fd, void *buffer, unsigned length)
 {
-  if (!check_pointer(buffer)){
+  if (!(check_pointer(buffer) && check_pointer((char*)buffer+length-1))){
     exit(-1);
   }
+
+  lock_acquire (&filesys_lock);
 
   int read_bytes = 0 ;
   // 输入流
@@ -278,20 +290,24 @@ int read(int fd, void *buffer, unsigned length)
       buf[i] = input_getc();
       read_bytes++;
     }
+    lock_release(&filesys_lock);
     return read_bytes;
   }
     
   // 输出流
   if (fd == STDOUT_FILENO){ 
+    lock_release(&filesys_lock);
     return -1;
   }
   // 自己打开的 file, found by `fd` and thread_current()->file_descriptor_list
   struct file_descriptor* f = find_file_descriptor_by_fd (fd);
-  if (f == NULL)
+  if (f == NULL || f->file == NULL){
+    lock_release(&filesys_lock);
     return -1;
+  }
   
   read_bytes = file_read (f->file, buffer, length);
-  
+  lock_release(&filesys_lock);
   return read_bytes;
 }
 
@@ -301,25 +317,32 @@ int read(int fd, void *buffer, unsigned length)
 int write(int fd, const void *buffer, unsigned length)
 {
   // printf("check write ptr!\n");
-  if (!check_pointer(buffer)){
+  if (!(check_pointer(buffer) && check_pointer((char*)buffer+length-1))){
     exit(-1);
   }
 
   // 输入流
   if (fd == STDIN_FILENO)
     return -1;
+  lock_acquire (&filesys_lock);
   // 输出流
   if (fd == STDOUT_FILENO)
     { 
       putbuf ((char *)buffer, (size_t)length);
+      lock_release (&filesys_lock);
       return length;
     }
   // 自己打开的 file, found by `fd` and thread_current()->file_descriptor_list
   struct file_descriptor* f = find_file_descriptor_by_fd (fd);
-  if (f == NULL)
+  if (f == NULL || f->file == NULL){
+    lock_release(&filesys_lock);
     return -1;
+  }
   
-  return file_write (f->file, buffer, length);
+  int ret = file_write (f->file, buffer, length);
+  lock_release(&filesys_lock);
+
+  return ret;
 }
 
 /* Changes the next byte to be read or written in open file fd to position, 
@@ -327,22 +350,32 @@ int write(int fd, const void *buffer, unsigned length)
    (Thus, a position of 0 is the file’s start.) */
 void seek(int fd, unsigned position)
 {
+  lock_acquire (&filesys_lock);
+
   struct file_descriptor* f = find_file_descriptor_by_fd(fd);
-  if(f==NULL)
-    return;
   
-  file_seek(f->file, position);
+  if (!(f == NULL || f->file == NULL)){
+    file_seek(f->file, position);
+  }
+  lock_release(&filesys_lock);
+  return;
+  
 }
 
 /* Returns the position of the next byte to be read or written in open file fd,
    expressed in bytes from the beginning of the file. */
 unsigned tell(int fd)
 {
+  lock_acquire (&filesys_lock);
   struct file_descriptor* f = find_file_descriptor_by_fd(fd);
-  if(f==NULL)
-    return -1;
 
-  return file_tell(f->file);
+  if (f == NULL || f->file == NULL){
+    lock_release(&filesys_lock);
+    return -1;
+  }
+  unsigned ret = file_tell(f->file);
+  lock_release(&filesys_lock);
+  return ret;
 }
 
 /* Closes file descriptor fd. 
@@ -350,16 +383,18 @@ unsigned tell(int fd)
    as if by calling this function for each one. */
 void close(int fd)
 {
+  lock_acquire (&filesys_lock);
   struct file_descriptor* f = find_file_descriptor_by_fd(fd);
-  if(f==NULL)
+  if (f == NULL || f->file == NULL){
+    lock_release(&filesys_lock);
     return;
+  }
 
-  enum intr_level old_level = intr_disable ();
-  list_remove(&f->elem);
-  intr_set_level (old_level);
   file_close(f->file);
-  free(f);
-  /* used malloc() when open */
+  list_remove(&f->elem);
+  palloc_free_page(f);
+  lock_release(&filesys_lock);
+  return;
 }
 
 /********************** helper functions ***************************************/
@@ -372,12 +407,12 @@ find_file_descriptor_by_fd(int fd){
   if(fd<2 || fd>thread_current()->fileNum_plus2) 
     return NULL;
 
-  struct list l = thread_current()->file_descriptor_list;
+  struct list* l = &thread_current()->file_descriptor_list;
   if(list_empty(&l)) 
     return NULL;
 
   // printf ("\nsize: %d\n",list_size(&l));
-  for (struct list_elem *e = list_begin (&l); e != list_end (&l); e = list_next (e))
+  for (struct list_elem *e = list_begin (l); e != list_end (l); e = list_next (e))
   {
     struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
       if(f->fd == fd && check_pointer(f->file)){
