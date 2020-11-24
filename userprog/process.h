@@ -16,22 +16,18 @@ typedef tid_t pid_t;
 /* PCB : see initialization at process_execute(). */
 struct process_control_block {
 
-  pid_t pid;                /* The pid of process */
+  pid_t pid;
+  const char* file_name;  // 制行的命令，包含参数
+  int32_t return_status;  // 返回值
 
-  const char* file_name;      /* The command line of this process being executed */
+  struct list_elem elem;  // 爸爸的pcb_list的list_elem
+  struct thread* parent_thread;
+  struct semaphore sema_thread_created; // start_process完成之后，告诉process_execute可以清理一些变量的内存
+  struct semaphore sema_being_waited_by_father; // 爸爸在等你
 
-  struct list_elem elem;    /* element for thread.child_list */
-  struct thread* parent_thread;    /* the parent process. */
-
-  bool waiting;             /* indicates whether parent process is waiting on this. */
-  bool exited;              /* indicates whether the process is done (exited). */
-  bool parent_dead;              /* indicates whether the parent process has terminated before. */
-  int32_t return_status;         /* the exit code passed from exit(), when exited = true */
-
-  /* Synchronization */
-  struct semaphore sema_thread_created;   /* the semaphore used between start_process() and process_execute() */
-  struct semaphore sema_being_waited_by_father;             /* the semaphore used for wait() : parent blocks until child exits */
-
+  bool waiting;
+  bool exited;
+  bool parent_dead; // 爸爸先走了，自己的后事要自己料理了
 };
 
 
