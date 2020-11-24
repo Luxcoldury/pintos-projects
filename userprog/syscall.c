@@ -276,7 +276,7 @@ int filesize(int fd)
    Fd 0 reads from the keyboard using input_getc(). */
 int read(int fd, void *buffer, unsigned length)
 {
-  if (!(check_pointer(buffer) && check_pointer((char*)buffer+length-1))){
+  if (!(check_pointer(buffer) && check_pointer((char*)buffer+length-1) && is_user_vaddr (buffer) && is_user_vaddr ((char*)buffer+length-1))){
     exit(-1);
   }
 
@@ -317,7 +317,7 @@ int read(int fd, void *buffer, unsigned length)
 int write(int fd, const void *buffer, unsigned length)
 {
   // printf("check write ptr!\n");
-  if (!(check_pointer(buffer) && check_pointer((char*)buffer+length-1))){
+  if (!(check_pointer(buffer) && check_pointer((char*)buffer+length-1)&& is_user_vaddr (buffer) && is_user_vaddr ((char*)buffer+length-1))){
     exit(-1);
   }
 

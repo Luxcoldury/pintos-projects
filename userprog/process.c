@@ -29,8 +29,13 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
-  char *fn_copy;
+  char *fn_copy=NULL;
   tid_t tid;
+
+  // strtok_r会修改原指针的内容
+  // 只对file_name做strtok_r
+  // fn_copy保留不变
+  char *func=NULL, *save_ptr=NULL;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -39,16 +44,19 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  // strtok_r会修改原指针的内容
-  // 只对file_name做strtok_r
-  // fn_copy保留不变
-  char *func, *save_ptr;
+  func = palloc_get_page (0);
+  if (func == NULL){
+    palloc_free_page(fn_copy);
+    return TID_ERROR;
+  }
 
-  func = strtok_r ((char*)file_name, " ", &save_ptr);
+  strlcpy (func, file_name, PGSIZE);
+  func = strtok_r (func, " ", &save_ptr);
 
   struct process_control_block *pcb = palloc_get_page(0);
   if (pcb==NULL){
     palloc_free_page(fn_copy);
+    palloc_free_page(func);
     return TID_ERROR;
   }
 
@@ -66,12 +74,15 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME(p2.1: now changed to `FUNC`). */
   tid = thread_create (func, PRI_DEFAULT, start_process, pcb); // fn_cpoy即"exe arg arg..."原样传给start_process
   if (tid == TID_ERROR){
+    palloc_free_page(func);
     palloc_free_page(fn_copy); 
     palloc_free_page(pcb);
     return TID_ERROR;
   }
 
   sema_down(&pcb->sema_thread_created);
+  palloc_free_page(func);
+
   // 把子进程加到列表里
   if(pcb->pid>=0){
     list_push_back(&thread_current()->child_thread_pcb_list,&pcb->elem);
