@@ -107,7 +107,11 @@ struct thread
     struct semaphore being_waited_by_father_sema; //爸爸在等你（x）
     struct file* owner_file;
 #endif
-
+#ifdef VM
+    /* owned by vm/page.c */
+    struct hash spt_hash_table;			  /* hashtable */
+    
+#endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };

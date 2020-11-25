@@ -12,8 +12,12 @@ ft_init()
 }
 
 /* falloc a new frame and append as a ft list entry */
-void *falloc_get_frame (enum palloc_flags flag, struct sup_page_entry* aux)
+void *falloc_get_frame (enum palloc_flags flag, struct sup_page_entry* page)
 {
+	/* check flag */
+	if (flag != PAL_USER){
+		return NULL;
+	}
 	uint32_t* ft_vaddr = palloc_get_page(PAL_USER| PAL_ZERO);
 	/* if has free frame */
 	if (ft_vaddr != NULL){
@@ -24,24 +28,26 @@ void *falloc_get_frame (enum palloc_flags flag, struct sup_page_entry* aux)
 
 		fte->frame = ft_vaddr;
 		fte->owner = thread_current();
-		fte->aux = aux;
+		fte->page = page;
 		struct list_elem* e;
 		fte->ele = e;
 		list_insert(fte->ele, frame_table);
-		return ft_vaddr;
+		return ft_vadftedr;
 	}
 	else{
-		evict(flag, aux);
+		/* if no free frame, evict one for the given page */
+		evict(page);
 	}
 	
 }
 
+
 /* evict a frame */
 void
-evict(enum palloc_flags flag, struct sup_page_entry* aux)
+evict(struct sup_page_entry* page)
 {
 	/* evict to swap/ mmap */
-	if(aux->dirty){
+	if(page->dirty){
 		/* evict to disk/ mmap */
 	}
 	/* else evict a frame from ft */
@@ -53,6 +59,7 @@ evict(enum palloc_flags flag, struct sup_page_entry* aux)
         //   ...do something with f...
         }
 }
+
 
 /* free a frame and delete from ft list */
 void 
