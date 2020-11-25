@@ -1,6 +1,9 @@
 #ifndef VM_PAGE_H
 #define VM_PAGE_H
 
+/* refer to `pte.h`, `hash.h` */
+#include "lib/kernel/hash.c"
+
 //a list or hashtable of sup_page_table_entry as your supplementary page table
 //remember, each thread should have its own sup_page_table, so create a new
 // list or hashtable member in thread.h
