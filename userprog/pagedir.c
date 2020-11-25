@@ -287,6 +287,12 @@ bool check_pointer(const void *vaddr)
     }
   }
   return true;
+
+  // int result;
+  // asm ("movl $1f, %0; movzbl %1, %0; 1:"
+  //     : "=&a" (result) : "m" (*vaddr));
+  // return result;
+  
   // Q: 怎么free recources? 退出之后就默认free了吗？
   // A: 交给syscall exit!
 }

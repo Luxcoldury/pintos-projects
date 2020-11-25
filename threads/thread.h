@@ -102,9 +102,8 @@ struct thread
     struct list file_descriptor_list;   /* list of file descriptors */
     int fileNum_plus2;                  /* 字面意思，因为fd从2开始呀 */
     bool halted;                        /* whether halt is called */
-    struct list child_thread_list;//子进程list
-    struct list_elem child_thread_elem;
-    struct semaphore being_waited_by_father_sema; //爸爸在等你（x）
+    struct list child_thread_pcb_list;//子进程list
+    struct process_control_block* pcb;
     struct file* owner_file;
 #endif
 #ifdef VM

@@ -29,8 +29,13 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
-  char *fn_copy;
+  char *fn_copy=NULL;
   tid_t tid;
+
+  // strtok_r会修改原指针的内容
+  // 只对file_name做strtok_r
+  // fn_copy保留不变
+  char *func=NULL, *save_ptr=NULL;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -39,30 +44,52 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  // strtok_r会修改原指针的内容
-  // 只对file_name做strtok_r
-  // fn_copy保留不变
-  char *func, *save_ptr;
-
-  func = strtok_r ((char*)file_name, " ", &save_ptr);
-
-  /* Create a new thread to execute FILE_NAME(p2.1: now changed to `FUNC`). */
-  tid = thread_create (func, PRI_DEFAULT, start_process, fn_copy); // fn_cpoy即"exe arg arg..."原样传给start_process
-  if (tid == TID_ERROR){
-    palloc_free_page (fn_copy); 
-  }else{
-    enum intr_level old_level = intr_disable ();
-    // 把子进程加到列表里
-    struct list_elem* temp;
-    struct thread* temp_thread;
-    for(temp=list_begin(&all_list);temp!=list_end(&all_list);temp=list_next(temp)){
-      temp_thread = list_entry(temp,struct thread,allelem);
-      if(temp_thread->tid==tid) list_push_back(&thread_current()->child_thread_list,&temp_thread->child_thread_elem);
-    }
-    intr_set_level (old_level);
+  func = palloc_get_page (0);
+  if (func == NULL){
+    palloc_free_page(fn_copy);
+    return TID_ERROR;
   }
 
-  return tid;
+  strlcpy (func, file_name, PGSIZE);
+  func = strtok_r (func, " ", &save_ptr);
+
+  struct process_control_block *pcb = palloc_get_page(0);
+  if (pcb==NULL){
+    palloc_free_page(fn_copy);
+    palloc_free_page(func);
+    return TID_ERROR;
+  }
+
+  pcb->pid = PID_INITIALIZING;
+  pcb->parent_thread = thread_current();
+  pcb->file_name = fn_copy;
+  pcb->waiting = false;
+  pcb->exited = false;
+  pcb->parent_dead = false;
+  pcb->return_status = -1;
+
+  sema_init(&pcb->sema_thread_created, 0);
+  sema_init(&pcb->sema_being_waited_by_father, 0);
+
+  /* Create a new thread to execute FILE_NAME(p2.1: now changed to `FUNC`). */
+  tid = thread_create (func, PRI_DEFAULT, start_process, pcb); // fn_cpoy即"exe arg arg..."原样传给start_process
+  if (tid == TID_ERROR){
+    palloc_free_page(func);
+    palloc_free_page(fn_copy); 
+    palloc_free_page(pcb);
+    return TID_ERROR;
+  }
+
+  sema_down(&pcb->sema_thread_created);
+  palloc_free_page(func);
+
+  // 把子进程加到列表里
+  if(pcb->pid>=0){
+    list_push_back(&thread_current()->child_thread_pcb_list,&pcb->elem);
+  }
+
+  // if (fn_copy) palloc_free_page(fn_copy);
+  return pcb->pid;
 }
 
 /* A thread function that loads a user process and starts it
@@ -71,9 +98,10 @@ process_execute (const char *file_name)
    这里的 file_name_ 即`process_create()`里面传入的`fn_copy` "exe arg arg..."
 */
 static void
-start_process (void *file_name_)
+start_process (void *pcb_)
 {
-  char* exe_name = file_name_;
+  struct process_control_block *pcb = pcb_;
+  char* exe_name = pcb->file_name;
   char* argvs;
   exe_name = strtok_r (exe_name, " ", &argvs);
   // 这一步分离完之后，exe_name是"exe"，argvs是"arg arg arg..."
@@ -93,8 +121,7 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   if (!success) 
-    thread_exit ();
-
+    goto finish;
   // p2.1: if syccess, parsing arguments to stack
   int argc = 0;
   // arg_vp: array of argument variable ponters (char*)
@@ -159,9 +186,15 @@ start_process (void *file_name_)
   if_.esp = sp;
   // hex_dump((uintptr_t)if_.esp, if_.esp, 128, true);
 
-
+  finish:
   /*但是不管成不成功都要释放之前分配的1page内存所以传入fn_copy */
   palloc_free_page (exe_name);
+  pcb->pid = success ? (pid_t)(thread_current()->tid) : PID_ERROR;
+  thread_current()->pcb = pcb;
+  sema_up(&pcb->sema_thread_created);
+
+  if (!success)
+    exit (-1);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -172,6 +205,15 @@ start_process (void *file_name_)
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
+
+// void printlist(struct list* l)
+// {
+//   for (struct list_elem* e = list_begin(l); e != list_end(l); e = list_next(e))
+//   {
+//     struct thread* t = list_entry(e, struct thread, child_thread_elem);
+//     printf("%d %s %d \n",t->tid,t->name,t->status);
+//   }
+// }
 
 /* p2.1: 如果是儿子，爸爸等儿子死了再return -1
    Waits for thread TID to die and returns its exit status.  If
@@ -188,29 +230,37 @@ process_wait (tid_t child_tid UNUSED)
 {
   // p2.6: infinite loop, or wait forever
   // printf("process %d wait %d \n", thread_tid(), child_tid);
-  struct list* child_list = &thread_current()->child_thread_list;
-  struct list_elem* temp;
-  struct thread* temp_thread;
+  struct list* child_list = &thread_current()->child_thread_pcb_list;
+  struct list_elem* temp_elem;
+  struct process_control_block* temp_pcb;
   int found=0;
+
+//  printlist(child_list);
 
   if (list_empty(child_list)) return -1;
 
-  for(temp=list_begin(child_list);temp!=list_end(child_list);temp=list_next(temp)){
-    temp_thread = list_entry(temp,struct thread,child_thread_elem);
-    if(temp_thread->tid==child_tid){
+  for(temp_elem=list_begin(child_list);temp_elem!=list_end(child_list);temp_elem=list_next(temp_elem)){
+    temp_pcb = list_entry(temp_elem,struct process_control_block,elem);
+    if(temp_pcb->pid==child_tid){
       found = 1;
       break;
     }
   }
 
-  if (!found){
+  if (!found || temp_pcb->waiting)
     return -1;
+
+  temp_pcb->waiting=true;
+
+  if(!temp_pcb->exited){
+    sema_down(&temp_pcb->sema_being_waited_by_father);
   }
 
-  list_remove(&temp_thread->child_thread_elem);
-  sema_down(&temp_thread->being_waited_by_father_sema);
+  int exit_status = temp_pcb->return_status;
+  list_remove(temp_elem);
+  palloc_free_page(temp_pcb);
   // printf("process wait done\n");
-  return temp_thread->exit_status;
+  return exit_status;
 
 }
 
@@ -220,11 +270,37 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-  file_close (cur->owner_file);
 
-  // 如果是kernel
-  if(thread_tid() == 1) return;
-  // 下面是userprog
+  while (!list_empty(&cur->file_descriptor_list)) {
+    struct list_elem *e = list_pop_front (&cur->file_descriptor_list);
+    struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
+    file_close(f->file);
+    palloc_free_page(f);
+  }
+  
+  if(cur->owner_file){
+    file_allow_write(cur->owner_file);
+    file_close (cur->owner_file);
+  }
+
+  while (!list_empty(&cur->child_thread_pcb_list)) {
+    struct list_elem *e = list_pop_front (&cur->child_thread_pcb_list);
+    struct process_control_block *pcb;
+    pcb = list_entry(e, struct process_control_block, elem);
+    if (pcb->exited == true) {
+      palloc_free_page (pcb);
+    } else {
+      pcb->parent_dead = true;//爸爸先死了_(:з」∠)_
+      pcb->parent_thread = NULL;
+    }
+  }
+
+  cur->pcb->exited = true;
+  bool parent_dead = cur->pcb->parent_dead;
+  sema_up(&cur->pcb->sema_being_waited_by_father);
+
+  if (parent_dead)
+    palloc_free_page(&cur->pcb);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */

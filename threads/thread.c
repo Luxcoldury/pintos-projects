@@ -287,7 +287,6 @@ thread_exit (void)
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
-  sema_up(&thread_current()->being_waited_by_father_sema);
   process_exit ();
 #endif
   // printf ("after process_exit()");
@@ -476,8 +475,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->fileNum_plus2 = 2; /* init to 2 */
   t->halted = false;/* by default */
 
-  list_init(&t->child_thread_list);
-  sema_init(&t->being_waited_by_father_sema,0);
+  list_init(&t->child_thread_pcb_list);
+  // sema_init(&t->being_waited_by_father_sema,0);
   #endif /* for proj2 */
 
   #ifndef VM
