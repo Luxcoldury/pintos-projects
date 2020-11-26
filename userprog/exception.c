@@ -4,8 +4,11 @@
 #include "userprog/gdt.h"
 #include "lib/user/syscall.h"
 #include "userprog/pagedir.h"
+#include "userprog/process.h"
 #include "threads/interrupt.h"
+#include "threads/vaddr.h"
 #include "threads/thread.h"
+#include "threads/palloc.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -141,7 +144,6 @@ page_fault (struct intr_frame *f)
   /* Turn interrupts back on (they were only off so that we could
      be assured of reading CR2 before it changed). */
   intr_enable ();
-  exit(-1);
 
   /* Count page faults. */
   page_fault_cnt++;
@@ -151,10 +153,33 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
+// #ifdef VM
+
+  // if in spt
+
+  // not in spt. either sp or "real page fault"
+  if(fault_addr == NULL || is_kernel_vaddr(fault_addr) || fault_addr < 0x08048000 || fault_addr < (char*)f->esp-32)
+    goto real_page_fault;
+
+  // legal sp, grow stach
+  void* upage = pg_round_down(fault_addr);
+  void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
+  
+  if (kpage == NULL)
+    goto real_page_fault;
+
+  if(install_page(upage,kpage,true)){
+    return;
+  }else{
+    palloc_free_page(kpage);
+  }
+  
+  real_page_fault:
+// #endif
+
  /* If in the page fault handler you decide this address is actually not invalid and
 the process can proceed, make sure you do not run the last two lines */
-  if
-
+  exit(-1);
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
