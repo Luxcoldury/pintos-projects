@@ -40,8 +40,8 @@ struct sup_page_table_entry {
 
 
 // for spt operations
-struct sup_page_table_entry*  spt_init_page (uint32_t vaddr, bool isDirty);
-void* spt_create_page (uint32_t vaddr);
+struct sup_page_table_entry*  spt_init_page (uint32_t vaddr);
+struct sup_page_table_entry*  spt_create_page (uint32_t vaddr);
 void* spt_free_page (struct sup_page_table_entry* page);
 
 struct sup_page_table_entry *spt_hash_lookup (const void *address);

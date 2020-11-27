@@ -107,6 +107,7 @@ struct thread
     struct process_control_block* pcb;
     struct file* owner_file;
 #endif
+
 #ifdef VM
     /* owned by vm/page.c */
     struct hash spt_hash_table;			  /* hashtable */

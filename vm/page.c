@@ -1,23 +1,24 @@
 #include "page.h"
 #include "threads/thread.h"
 #include "frame.h"
+#include "lib/kernel/hash.h"	/* for hash */
 
 
 /* Returns a hash value for page p. */
 unsigned
 spt_hash (const struct hash_elem *p_, void *aux UNUSED)
 {
-const struct sup_page_table_entry *p = hash_entry (p_, struct sup_page_table_entry, hash_elem);
+const struct sup_page_table_entry *p = hash_entry (p_, struct sup_page_table_entry, hash_ele);
 return hash_bytes (&p->user_vaddr, sizeof(p->user_vaddr));
 }
 
 
 /* Returns true if page a precedes page b. */
 bool
-spt_hash_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED)
+spt_hash_less (const struct hash_elem*a_, const struct hash_elem*b_, void *aux UNUSED)
 {
-const struct sup_page_table_entry *a = hash_entry (a_, struct sup_page_table_entry, hash_elem);
-const struct sup_page_table_entry *b = hash_entry (b_, struct sup_page_table_entry, hash_elem);
+const struct sup_page_table_entry *a = hash_entry (a_, struct sup_page_table_entry, hash_ele);
+const struct sup_page_table_entry *b = hash_entry (b_, struct sup_page_table_entry, hash_ele);
 return a->user_vaddr < b->user_vaddr;
 }
 
@@ -28,7 +29,7 @@ struct sup_page_table_entry *
 spt_hash_lookup (const void *address)
 {
 	struct sup_page_table_entry p;
-	struct hash_elem *e;
+	struct hash_elem*e;
 	p.user_vaddr = address;
 	e = hash_find (&thread_current ()->spt_hash_table, &p.hash_ele);
 	return e != NULL ? hash_entry (e, struct sup_page_table_entry, hash_ele) : NULL;
@@ -37,7 +38,7 @@ spt_hash_lookup (const void *address)
 
 /* init a spt entry with known info */
 struct sup_page_table_entry* 
-spt_init_page (uint32_t vaddr, bool isDirty)
+spt_init_page (uint32_t vaddr)
 {
 	struct sup_page_table_entry* page = malloc (sizeof(struct sup_page_table_entry));
 	if(page == NULL){
@@ -45,9 +46,7 @@ spt_init_page (uint32_t vaddr, bool isDirty)
 		return NULL;
 	}
 	page->user_vaddr = vaddr;
-	page->dirty = isDirty;
-	page->accessed = isAccessed;
-	lock_init (&page->lock);
+	lock_init (&page->spt_lock);
 	return page;
 }
 
@@ -56,7 +55,7 @@ spt_init_page (uint32_t vaddr, bool isDirty)
 struct sup_page_table_entry* 
 spt_create_page (uint32_t vaddr)
 {
-	struct sup_page_table_entry* newPage = spt_init_page(vaddr, false, false);
+	struct sup_page_table_entry* newPage = spt_init_page(vaddr);
 	/* if page allocation failed */
 	if(newPage == NULL){
 		return NULL;
@@ -69,9 +68,9 @@ spt_create_page (uint32_t vaddr)
 	}
 
 	/* if success, get a frame for it */
-	struct frame_table_entry frame = ft_get_frame(PAL_USER, newPage);
+	struct frame_table_entry* frame = ft_get_frame(newPage);
 	newPage->frame = frame;
-	install_page(vaddr, frame->user_vaddr, true);
+	install_page(vaddr, frame->frame, true);
 	
 	return newPage;
 }
@@ -80,7 +79,7 @@ spt_create_page (uint32_t vaddr)
 struct sup_page_table_entry* 
 spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable)
 {
-	struct sup_page_table_entry* newPage = spt_init_page(vaddr, false, false);
+	struct sup_page_table_entry* newPage = spt_init_page(vaddr);
 	/* if page allocation failed */
 	if(newPage == NULL){
 		return NULL;
@@ -93,7 +92,7 @@ spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, ui
 	}
 
 	/* if success, map a file for it */
-	newPage->type = FILE;
+	newPage->status = FILE;
 	newPage->frame = NULL;
 	newPage->file = file;
 	newPage->file_offset = offset;
@@ -130,10 +129,10 @@ spt_free_page (struct sup_page_table_entry* page)
 
 /* destructor function  for `spt_destroy_hash` */
 static void
-spt_hash_destructor(struct hash_elem *e, void *aux UNUSED)
+spt_hash_destructor(struct hash_elem*e, void *aux UNUSED)
 {
   /* clean the spte related resources  */
-  struct sup_page_table_entry *page = hash_entry(e, struct sup_page_table_entry, hash_ele);
+  struct sup_page_table_entry *page = hash_entry (e, struct sup_page_table_entry, hash_ele);
 
   /* free the spte */
   spt_free_page(page);
@@ -143,6 +142,6 @@ spt_hash_destructor(struct hash_elem *e, void *aux UNUSED)
 /* destroy the spt hash table of the given thread */
 void spt_destroy_hash(struct thread* t)
 {
-	hash_destroy(&t->spt_hash_table, spt_hash_destructor)
+	hash_destroy(&t->spt_hash_table, spt_hash_destructor);
 }
 

@@ -1,10 +1,11 @@
 #include "swap.h"
 #include "page.h"
 #include "userprog/pagedir.h"
+#include "threads/thread.h"
 
 
 //Make the swap block global
-static size_t blocks_per_page =  PGSIZE / BLOCK_SECTOR_SIZE;
+static size_t blocks_per_page =  PGSIZE / BLOCK_SECTOR_SIZE;/* 8 */
 static struct block* swap_blocks;			/* the swap device */
 static block_sector_t swap_num;				/* num of available swaps(how many pages)in swap device */
 static struct bitmap* swap_free_map;		/* true if free for swap, otherwise false */
@@ -12,16 +13,16 @@ static struct bitmap* swap_free_map;		/* true if free for swap, otherwise false 
 
 /* Get the block device when we initialize our swap code */
 void 
-swap_init();
+swap_init()
 {
 	/* init the block device*/
-	global_swap_block = block_get_role(BLOCK_SWAP);
+	swap_blocks = block_get_role(BLOCK_SWAP);
 		/* if failed, ERROR */
-	block_sector_t num_blocks = block_size(global_swap_block);
+	block_sector_t num_blocks = block_size(swap_blocks);
 	swap_num = num_blocks / blocks_per_page;
 
 	/* init bitmap */
-	swap_free_map = bitmap_create( block_num/ BLOCKS_PER_PAGE );
+	swap_free_map = bitmap_create( swap_num );
 	bitmap_set_all(swap_free_map, true);
 }
 
@@ -31,7 +32,8 @@ swap_init();
    find the first free block and 
    return its index in the bitmap. */
 static size_t
-first_free_block_index(){
+first_free_block_index()
+{
 	return bitmap_scan_and_flip(swap_free_map, 0, 1, true);
 }
 
@@ -55,7 +57,7 @@ swap_free_pagesized_blocks(size_t swap_index)
    the frame is the frame I want to read into / write from.
 */
 static size_t
-read_write_block(uint8_t* frame, bool write, size_t index){
+read_write_block(void* frame, bool write, size_t index)
 {
 	/* write to disk */
 	if ( write ){
@@ -88,7 +90,7 @@ void
 swap_eviction(struct frame_table_entry* fte)
 {
 	/* set page, frame unlinked */
-	struct supple_page_entry* page = fte->page;
+	struct sup_page_table_entry* page = fte->page;
 	page->frame = NULL;
 
 	/* then free the frame （not the spte） */
@@ -111,12 +113,13 @@ swap_reclamation(struct frame_table_entry* fte, struct sup_page_table_entry* spt
 {
 	/* re-link a new frame(rather than new spte) */
 	spte->frame = fte;
-	frame->page = spte;
+	fte->page = spte;
 
 	/* read from disk to frame */
 	size_t swap_index = read_write_block(fte->frame, false, spte->swap_id);
 
 	/* free the blocks */
-	page->status = FRAME;
+	spte->status = FRAME;
 	swap_free_pagesized_blocks(swap_index);
+	return;
 }

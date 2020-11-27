@@ -9,16 +9,16 @@ struct list frame_table;
 struct lock ft_lock;		/* Q: 什么时候用到ft_lock呢？ */
 
 struct frame_table_entry {
-	struct list_element *ele;		/* for list */
+	struct list_elem ele;		/* for list */
 	uint32_t* frame;  				/* ptr to page that currently occupies it */
 	struct thread* owner;			/* the thread who owns it */
-	struct sup_page_entry* page;	/* ptr to supplemental page entry */
+	struct sup_page_table_entry* page;	/* ptr to supplemental page entry */
 // Maybe store information for memory mapped files here too?
 };
 
 
 void ft_init();
-struct frame_table_entry* ft_get_frame (struct sup_page_entry* page);
-struct frame_table_entry* ft_free_frame (struct frame_table_entry* fte);
+struct frame_table_entry* ft_get_frame (struct sup_page_table_entry* page);
+void ft_free_frame (struct frame_table_entry* fte);
 
 #endif/* vm/ frame.h */
