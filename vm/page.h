@@ -13,19 +13,31 @@
 
 /* spt entry with information about page */
 struct sup_page_table_entry {
+	/* for hash */
 	struct hash_elem hash_ele;		/* hash element */
 	uint32_t* user_vaddr;			/* virtual address, as a key in hash table */
-	struct lock spt_lock;					/* lock to provide page operation e.g. hash */
+	struct lock spt_lock;			/* lock to provide page operation e.g. hash */
 
+	/* for LRU evict in frame */
+	uint64_t access_time;
 // You can use the provided PTE functions instead. I’ve posted links to
-// the documentation below
-	bool dirty;						/* if modified */
-	bool accessed;					/* if accessed */ 
+// the documentation below, dirty and accessed暂时没有用到
+	bool dirty=false;					/* if modified */
+	bool accessed=false;				/* if accessed */ 
+
+	/* information for swap */
+	struct frame_table_entry* frame;	/* frame */
+
 };
 
+enum page_type{
+	FRAME,
+	SWAP,
+	FILE
+};
 
 // for spt operations
-void spt_init_page (struct hash_elem e, uint32_t vaddr, bool isDirty, bool isAccessed);
+struct sup_page_table_entry*  spt_init_page (uint32_t vaddr, bool isDirty, bool isAccessed);
 void* spt_create_page (uint32_t vaddr);
 void* spt_free_page (uint32_t vaddr);
 

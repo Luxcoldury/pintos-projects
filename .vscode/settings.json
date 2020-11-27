@@ -7,6 +7,8 @@
         "limits": "c",
         "sstream": "c",
         "streambuf": "c",
-        "fstream": "c"
-    }
+        "fstream": "c",
+        "cstdlib": "c"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }

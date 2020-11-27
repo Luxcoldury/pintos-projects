@@ -481,7 +481,7 @@ init_thread (struct thread *t, const char *name, int priority)
 
   #ifndef VM
   /* Owned by `vm/page.c`. */
-  hash_init(&t->spt_hash_table, spt_hash, spt_hash_less, NULL);/* init hashtable */
+  hash_init(&t->spt_hash_table, spt_hash, spt_hash_less, NULL); /* init hashtable */
   #endif/* for proj3 */
 
   old_level = intr_disable ();

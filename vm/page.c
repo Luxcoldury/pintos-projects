@@ -1,5 +1,6 @@
 #include "page.h"
 #include "threads/thread.h"
+#include "frame.h"
 
 
 /* Returns a hash value for page p. */
@@ -29,21 +30,21 @@ spt_hash_lookup (const void *address)
 struct sup_page_table_entry p;
 struct hash_elem *e;
 p.user_vaddr = address;
-e = hash_find (&thread_current ()->spt_hash_table, &p.hash_elem);
-return e != NULL ? hash_entry (e, struct sup_page_table_entry, hash_elem) : NULL;
+e = hash_find (&thread_current ()->spt_hash_table, &p.hash_ele);
+return e != NULL ? hash_entry (e, struct sup_page_table_entry, hash_ele) : NULL;
 }
 
 
 /* init a spt entry with known info */
 struct sup_page_table_entry* 
-spt_init_page (uint32_t vaddr, bool isDirty=0, bool isAccessed=0)
+spt_init_page (uint32_t vaddr, bool isDirty, bool isAccessed)
 {
 	struct sup_page_table_entry* page = malloc (sizeof(struct sup_page_table_entry));
 	if(page == NULL){
 		/* malloc fail */
 		return NULL;
 	}
-	page->user_vaddr = vaddr;e;
+	page->user_vaddr = vaddr;
 	page->dirty = isDirty;
 	page->accessed = isAccessed;
 	return page;
@@ -54,13 +55,23 @@ spt_init_page (uint32_t vaddr, bool isDirty=0, bool isAccessed=0)
 void* 
 spt_create_page (uint32_t vaddr)
 {
-	struct sup_page_table_entry* newPage = spt_init_page(vaddr);
+	struct sup_page_table_entry* newPage = spt_init_page(vaddr, false, false);
+	/* if page allocation failed */
 	if(newPage == NULL){
 		return NULL;
 	}
-	hash_insert(&thread_current()->spt_hash_table, &newPage->hash_ele)
-	return newPage;
 
+	/* if vaddr accessed */
+	if(hash_insert(&thread_current()->spt_hash_table, &newPage->hash_ele)!=NULL){
+		return NULL;
+	}
+
+	/* if success, get a frame for it */
+	struct frame_table_entry frame = ft_get_frame(PAL_USER, newPage);
+	newPage->frame = frame;
+	install_page(vaddr, frame->user_vaddr, true);
+	
+	return newPage;
 }
 
 
@@ -70,7 +81,10 @@ spt_create_page (uint32_t vaddr)
 void* 
 spt_free_page (uint32_t vaddr)
 {
-	struct sup_page_table_entry* page =  spt_hash_lookup(vaddr);
-	hash_delete(&thread_current()->spt_hash_table, page->hash_ele);
+	if(struct sup_page_table_entry* page =  spt_hash_lookup(vaddr) == NULL){
+		return NULL;
+	}
+	ft_free_frame(page->frame);
+	hash_delete(&thread_current()->spt_hash_table, &page->hash_ele);
 	free(page);
 }
