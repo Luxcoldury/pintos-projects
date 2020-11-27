@@ -27,11 +27,11 @@ return a->user_vaddr < b->user_vaddr;
 struct sup_page_table_entry *
 spt_hash_lookup (const void *address)
 {
-struct sup_page_table_entry p;
-struct hash_elem *e;
-p.user_vaddr = address;
-e = hash_find (&thread_current ()->spt_hash_table, &p.hash_ele);
-return e != NULL ? hash_entry (e, struct sup_page_table_entry, hash_ele) : NULL;
+	struct sup_page_table_entry p;
+	struct hash_elem *e;
+	p.user_vaddr = address;
+	e = hash_find (&thread_current ()->spt_hash_table, &p.hash_ele);
+	return e != NULL ? hash_entry (e, struct sup_page_table_entry, hash_ele) : NULL;
 }
 
 
@@ -52,7 +52,7 @@ spt_init_page (uint32_t vaddr, bool isDirty, bool isAccessed)
 
 
 /* create a new page and push into hashtable */
-void* 
+struct sup_page_table_entry* 
 spt_create_page (uint32_t vaddr)
 {
 	struct sup_page_table_entry* newPage = spt_init_page(vaddr, false, false);
@@ -63,6 +63,7 @@ spt_create_page (uint32_t vaddr)
 
 	/* if vaddr accessed */
 	if(hash_insert(&thread_current()->spt_hash_table, &newPage->hash_ele)!=NULL){
+		free(newPage);
 		return NULL;
 	}
 

@@ -41,6 +41,8 @@ struct sup_page_table_entry*  spt_init_page (uint32_t vaddr, bool isDirty, bool 
 void* spt_create_page (uint32_t vaddr);
 void* spt_free_page (uint32_t vaddr);
 
+struct sup_page_table_entry *spt_hash_lookup (const void *address);
+
 
 // for hash uses (included for init_thread )
 unsigned spt_hash (const struct hash_elem *p_, void *aux UNUSED);

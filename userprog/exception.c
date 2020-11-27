@@ -9,6 +9,9 @@
 #include "threads/vaddr.h"
 #include "threads/thread.h"
 #include "threads/palloc.h"
+#include "vm/swap.h"
+#include "vm/frame.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -155,27 +158,44 @@ page_fault (struct intr_frame *f)
 
 // #ifdef VM
 
-  // if in spt
+  // write to read-only, kill
+  if (!not_present) {
+    goto real_page_fault;
+  }
+
+  // 
+  void* esp = user ? f->esp : thread_current()->kernel_esp_temp;
+
+  // whether in spt
+  struct sup_page_table_entry *existing_spt_page = spt_hash_lookup(fault_addr);
+  if(existing_spt_page!=NULL){
+    // already in spt
+    swap_reclamation(); load_page();
+    return;
+  }
 
   // not in spt. either sp or "real page fault"
-  if(fault_addr == NULL || is_kernel_vaddr(fault_addr) || fault_addr < 0x08048000 || fault_addr < (char*)f->esp-32)
+  if(fault_addr == NULL || is_kernel_vaddr(fault_addr) || fault_addr < 0x08048000 || (fault_addr != esp-32 && fault_addr != esp-4))
     goto real_page_fault;
 
   // legal sp, grow stach
   void* upage = pg_round_down(fault_addr);
-  void* kpage = (void*)palloc_get_page(PAL_USER | PAL_ZERO);
+  struct sup_page_table_entry* newPage = spt_create_page(upage)
   
-  if (kpage == NULL)
-    goto real_page_fault;
-
-  if(install_page(upage,kpage,true)){
+  if (newPage != NULL)
     return;
-  }else{
-    palloc_free_page(kpage);
-  }
-  
+
   real_page_fault:
 // #endif
+
+  // 如果kernel下的pf出问题，可能会用到下面代码
+  // /* (3.1.5) a page fault in the kernel merely sets eax to 0xffffffff
+  //  * and copies its former value into eip. see syscall.c:get_user() */
+  // if(!user) { // kernel mode
+  //   f->eip = (void *) f->eax;
+  //   f->eax = 0xffffffff;
+  //   return;
+  // }
 
  /* If in the page fault handler you decide this address is actually not invalid and
 the process can proceed, make sure you do not run the last two lines */

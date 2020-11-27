@@ -109,6 +109,7 @@ struct thread
 #ifdef VM
     /* owned by vm/page.c */
     struct hash spt_hash_table;			  /* hashtable */
+    uint8_t *kernel_esp_temp;            // kernel在pagefault时需要暂存esp
     
 #endif
     /* Owned by thread.c. */
