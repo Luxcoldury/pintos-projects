@@ -36,7 +36,6 @@ struct sup_page_table_entry {
 	size_t file_offset;
 	size_t file_bytes;
 	bool writable;
-
 };
 
 

@@ -25,6 +25,34 @@ FirstName LastName <email@domain.example>
 >> `struct` member, global or static variable, `typedef`, or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+```
+/* spt entry with information about page */
+struct sup_page_table_entry {
+	/* for hash */
+	struct hash_elem hash_ele;		/* hash element */
+	uint32_t* user_vaddr;			/* virtual address, as a key in hash table */
+	struct lock spt_lock;			/* lock to provide page operation e.g. hash */
+
+	/* information for swap */
+	enum page_type status;				/* where the data are in */
+	struct frame_table_entry* frame;	/* frame */
+	size_t swap_id;						/* swap index in bitmap table */
+
+	// for FILE mmap
+	struct file *file;
+	size_t file_offset;
+	size_t file_bytes;
+	bool writable;
+};
+
+struct frame_table_entry {
+	struct list_element *ele;		/* for list */
+	uint32_t* frame;  				/* ptr to page that currently occupies it */
+	struct thread* owner;			/* the thread who owns it */
+	struct sup_page_entry* page;	/* ptr to supplemental page entry */
+// Maybe store information for memory mapped files here too?
+};
+```
 ---- ALGORITHMS ----
 
 >> A2: In a few paragraphs, describe your code for accessing the data
