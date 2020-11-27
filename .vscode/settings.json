@@ -9,5 +9,6 @@
         "streambuf": "c",
         "fstream": "c",
         "cstdlib": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }

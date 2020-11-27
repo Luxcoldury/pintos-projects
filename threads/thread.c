@@ -14,6 +14,10 @@
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
+#ifdef VM
+#include "vm/page.h"
+#endif
+
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -92,6 +96,9 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  #ifdef VM
+  list_init (&mmap_list);
+  #endif
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -474,6 +481,11 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->child_thread_pcb_list);
   // sema_init(&t->being_waited_by_father_sema,0);
   #endif /* for proj2 */
+
+  #ifndef VM
+  /* Owned by `vm/page.c`. */
+  hash_init(&t->spt_hash_table, spt_hash, spt_hash_less, NULL); /* init hashtable */
+  #endif/* for proj3 */
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
