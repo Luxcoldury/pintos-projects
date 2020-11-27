@@ -7,6 +7,7 @@
 	`thread.sup_page_table` 
  */
 #include <stdbool.h>			/* for bool */
+#include <stddef.h>				/* for size_t */
 #include "lib/debug.h"			/* for unused var */
 #include "lib/kernel/hash.h"
 
@@ -27,6 +28,8 @@ struct sup_page_table_entry {
 
 	/* information for swap */
 	struct frame_table_entry* frame;	/* frame */
+	size_t swap_id;						/* swap index in bitmap table */
+	enum page_type status;				/* where the data are in */
 
 };
 
