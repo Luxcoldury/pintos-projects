@@ -133,7 +133,7 @@ static void
 spt_hash_destructor(struct hash_elem *e, void *aux UNUSED)
 {
   /* clean the spte related resources  */
-  struct sup_page_table_entry *page = hash_entry(e, struct sup_page_table_entry, e);
+  struct sup_page_table_entry *page = hash_entry(e, struct sup_page_table_entry, hash_ele);
 
   /* free the spte */
   spt_free_page(page);

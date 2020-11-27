@@ -184,7 +184,7 @@ page_fault (struct intr_frame *f)
 
   // legal sp, grow stach
   void* upage = pg_round_down(fault_addr);
-  struct sup_page_table_entry* newPage = spt_create_page(upage)
+  struct sup_page_table_entry* newPage = spt_create_page(upage);
   
   if (newPage != NULL)
     return;
