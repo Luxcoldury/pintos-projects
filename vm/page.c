@@ -46,6 +46,8 @@ spt_init_page (uint32_t vaddr, bool isDirty)
 	}
 	page->user_vaddr = vaddr;
 	page->dirty = isDirty;
+	page->accessed = isAccessed;
+	lock_init (&page->lock);
 	return page;
 }
 
@@ -105,20 +107,42 @@ spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, ui
    and remove it from hash table 
  */
 void* 
-spt_free_page (uint32_t vaddr)
+spt_free_page (struct sup_page_table_entry* page)
 {
-	struct sup_page_table_entry* page =  spt_hash_lookup(vaddr);
-	if(page == NULL){
-		return NULL;
-	}
-
+	/* for mmap */
 	// free a mmap file page
-	if(file){
+	if(page->file){
 		unmap();
 		return;
 	}
 
-	ft_free_frame(page->frame);
+	/* for swap if on disk */
+	if(page->status == SWAP){
+		swap_free_pagesized_blocks(page->swap_id);
+	}
+	if(page->status == FRAME){
+		ft_free_frame(page->frame);
+	}
 	hash_delete(&thread_current()->spt_hash_table, &page->hash_ele);
 	free(page);
 }
+
+
+/* destructor function  for `spt_destroy_hash` */
+static void
+spt_hash_destructor(struct hash_elem *e, void *aux UNUSED)
+{
+  /* clean the spte related resources  */
+  struct sup_page_table_entry *page = hash_entry(e, struct sup_page_table_entry, e);
+
+  /* free the spte */
+  spt_free_page(page);
+}
+
+
+/* destroy the spt hash table of the given thread */
+void spt_destroy_hash(struct thread* t)
+{
+	hash_destroy(&t->spt_hash_table, spt_hash_destructor)
+}
+
