@@ -32,7 +32,7 @@ struct sup_page_table_entry {
 	size_t swap_id;						/* swap index in bitmap table */
 
 	// for FILE mmap
-	sturct file *file;
+	struct file *file;
 	size_t file_offset;
 	size_t file_bytes;
 	bool writable;
