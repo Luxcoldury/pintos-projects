@@ -37,7 +37,7 @@ spt_hash_lookup (const void *address)
 
 /* init a spt entry with known info */
 struct sup_page_table_entry* 
-spt_init_page (uint32_t vaddr, bool isDirty, bool isAccessed)
+spt_init_page (uint32_t vaddr, bool isDirty)
 {
 	struct sup_page_table_entry* page = malloc (sizeof(struct sup_page_table_entry));
 	if(page == NULL){
@@ -62,7 +62,7 @@ spt_create_page (uint32_t vaddr)
 		return NULL;
 	}
 
-	/* if vaddr accessed */
+	// insert page into hash table
 	if(hash_insert(&thread_current()->spt_hash_table, &newPage->hash_ele)!=NULL){
 		free(newPage);
 		return NULL;
@@ -86,7 +86,7 @@ spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, ui
 		return NULL;
 	}
 
-	/* if vaddr accessed */
+	// insert page into hash table
 	if(hash_insert(&thread_current()->spt_hash_table, &newPage->hash_ele)!=NULL){
 		free(newPage);
 		return NULL;
