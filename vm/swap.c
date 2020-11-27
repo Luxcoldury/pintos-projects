@@ -42,11 +42,11 @@ static void
 swap_free_pagesized_blocks(swap_index)
 {
 	/* too large index */
-	ASSERT (swap_index >= swap_num);
+	ASSERT (swap_index < swap_num);
 
 	/* the block is empty(available) */
-	ASSERT (bitmap_test(swap_free_map, swap_index) == true);
-	
+	ASSERT (bitmap_test(swap_free_map, swap_index) == false);
+
 	bitmap_flip(swap_free_map, swap_index);
 }
 
