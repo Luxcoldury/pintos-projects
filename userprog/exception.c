@@ -172,6 +172,9 @@ page_fault (struct intr_frame *f)
   if(existing_spt_page!=NULL){
     // already in spt
     swap_reclamation(); load_page();
+    /* remember to assign 
+      `spt->access_time = timer_ticks;`
+     */
     return;
   }
 

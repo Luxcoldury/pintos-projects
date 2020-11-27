@@ -38,8 +38,8 @@ first_free_block_index(){
 
 /* bitmap operation: 
    as the name indecates */
-static void
-swap_free_pagesized_blocks(swap_index)
+void
+swap_free_pagesized_blocks(size_t swap_index)
 {
 	/* too large index */
 	ASSERT (swap_index < swap_num);
@@ -84,7 +84,8 @@ read_write_block(uint8_t* frame, bool write, size_t index){
 }
 
 /* swap out: from frame */
-void swap_eviction(struct frame_table_entry* fte)
+void 
+swap_eviction(struct frame_table_entry* fte)
 {
 	/* set page, frame unlinked */
 	struct supple_page_entry* page = fte->page;
@@ -105,7 +106,8 @@ void swap_eviction(struct frame_table_entry* fte)
 
 
 /* swap in: back into frame fte */
-void swap_reclamation(struct frame_table_entry* fte, struct sup_page_table_entry* spte)
+void 
+swap_reclamation(struct frame_table_entry* fte, struct sup_page_table_entry* spte)
 {
 	/* re-link a new frame(rather than new spte) */
 	spte->frame = fte;

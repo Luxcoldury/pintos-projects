@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/page.h" 
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -271,18 +272,20 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  /* for USERPROG */
+  /* free the fule Descriptors */
   while (!list_empty(&cur->file_descriptor_list)) {
     struct list_elem *e = list_pop_front (&cur->file_descriptor_list);
     struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
     file_close(f->file);
     palloc_free_page(f);
   }
-  
+  /* close files */
   if(cur->owner_file){
     file_allow_write(cur->owner_file);
     file_close (cur->owner_file);
   }
-
+  /* children threads */
   while (!list_empty(&cur->child_thread_pcb_list)) {
     struct list_elem *e = list_pop_front (&cur->child_thread_pcb_list);
     struct process_control_block *pcb;
@@ -301,7 +304,12 @@ process_exit (void)
 
   if (parent_dead)
     palloc_free_page(&cur->pcb);
-
+    
+  /* for VM, destroy the supplemental page hashtable */
+  #ifdef VM
+    spt_destroy_hash(cur);
+  #endif /* VM */
+  
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
