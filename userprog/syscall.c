@@ -162,7 +162,7 @@ syscall_handler(struct intr_frame *f UNUSED)
     if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
       exit(-1);
     }
-    munmap(*(sp + 1));
+    // munmap(*(sp + 1));
     break;
 
   }

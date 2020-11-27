@@ -111,7 +111,7 @@ spt_free_page (struct sup_page_table_entry* page)
 	/* for mmap */
 	// free a mmap file page
 	if(page->file){
-		unmap();
+		// unmap();
 		return;
 	}
 
