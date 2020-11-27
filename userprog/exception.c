@@ -171,7 +171,10 @@ page_fault (struct intr_frame *f)
   struct sup_page_table_entry *existing_spt_page = spt_hash_lookup(fault_addr);
   if(existing_spt_page!=NULL){
     // already in spt
-    swap_reclamation(); load_page();
+    struct frame_table_entry* new_fte = ft_get_frame(existing_spt_page);
+    if (new_fte==NULL)
+      goto real_page_fault;
+    swap_reclamation(new_fte,existing_spt_page);
     return;
   }
 

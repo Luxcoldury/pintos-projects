@@ -17,9 +17,8 @@ struct frame_table_entry {
 };
 
 
-
 void ft_init();
-void *ft_get_frame (enum palloc_flags);
-void ft_free_frame (struct frame_table_entry* fte);
+struct frame_table_entry* ft_get_frame (enum palloc_flags);
+struct frame_table_entry* ft_free_frame (struct frame_table_entry* fte);
 
 #endif/* vm/ frame.h */

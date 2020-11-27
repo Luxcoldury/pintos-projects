@@ -9,8 +9,8 @@
 
 /* swap operations */
 void swap_init();
-void swap_eviction();
-void swap_reclamation();
+void swap_eviction(struct frame_table_entry* fte);
+void swap_reclamation(struct frame_table_entry* fte, struct sup_page_table_entry* spte);
 
 
 #endif/* vm/ swap.h */

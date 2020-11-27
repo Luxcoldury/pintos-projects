@@ -14,8 +14,6 @@
 
 /* spt entry with information about page */
 struct sup_page_table_entry {
-	page_status status;
-
 	/* for hash */
 	struct hash_elem hash_ele;		/* hash element */
 	uint32_t* user_vaddr;			/* virtual address, as a key in hash table */
