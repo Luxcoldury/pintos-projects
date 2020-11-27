@@ -26,7 +26,7 @@ Bowen Xu <xubw@shanghaitech.edu.cn>
 >> A1: Copy here the declaration of each new or changed `struct` or
 >> `struct` member, global or static variable, `typedef`, or
 >> enumeration.  Identify the purpose of each in 25 words or less.
-
+in `page.h`:
 ```c
 /* spt entry with information about page */
 struct sup_page_table_entry {
@@ -34,45 +34,68 @@ struct sup_page_table_entry {
 	struct hash_elem hash_ele;		/* hash element */
 	uint32_t* user_vaddr;			/* virtual address, as a key in hash table */
 	struct lock spt_lock;			/* lock to provide page operation e.g. hash */
-
-	/* information for swap */
-	enum page_type status;				/* where the data are in */
 	struct frame_table_entry* frame;	/* frame */
-	size_t swap_id;						/* swap index in bitmap table */
-
-	// for FILE mmap
-	struct file *file;		// file maped
-	size_t file_offset;		// offset of this page in the file
-	size_t file_bytes;		// how many bytes are file, others are trailing
-	bool writable;			
 };
+```
+in `frame.h`:
+```c
+struct frame_table_entry {
+	struct list_elem ele;					/* for list */
+	uint32_t* frame;  						/* ptr to page that currently occupies it */
+	struct thread* owner;					/* the thread who owns it */
+	struct sup_page_table_entry* page;		/* ptr to supplemental page entry */
+// Maybe store information for memory mapped files here too?
+};
+
 ```
 ---- ALGORITHMS ----
 
 >> A2: In a few paragraphs, describe your code for accessing the data
 >> stored in the SPT about a given page.
 
-By calling `spt_hash_lookup` , we find through the SPT hash table, getting the SPT entry of the given page address. In the SPT entry, all the data of the given page is accessible.
+Here the concept of `page` is not really clear. So possible situations are listed below.
+The `userprog` is initialized with one page. And we keep the so-called `supplemental page table`
+ for the additional pages as the stack grows.
+
+If `page` means a virtual address, then we may face page fault.(stack growth):
+If the page is not in page directory, we can need to do the stack growth. I allocate a page of 
+memory in `user_pool`, construct a frame table entry `struct frame_table_entry` and assign it to 
+the page. Then use `page_install` to connect the two address.
+If the the page is already in page directory, we can get `struct sup_page_table_entry*` by calling 
+ `spt_hash_lookup()`. This way we can find through the SPT hash table, getting the SPT entry of
+  the given page address.
+
+If `page` means a `spt_entry` or `struct sup_page_table_entry*`. In the SPT entry, all the data of 
+the given page is accessible.
 
 >> A3: How does your code coordinate accessed and dirty bits between
 >> kernel and user virtual addresses that alias a single frame, or
 >> alternatively how do you avoid the issue?
 
 The kernel should only access user data through the user virtual address.
+And we do not use kernel virtual address.
 
 ---- SYNCHRONIZATION ----
 
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
 
-Only one process can enter page fault exception at a time. The frame will be given first come first serve.
+Only one process can enter page fault exception at a time. 
+The frame will be given first come first serve.
+And some frame operations will be locked to avoid trouble.
 
 ---- RATIONALE ----
 
 >> A5: Why did you choose the data structure(s) that you did for
 >> representing virtual-to-physical mappings?
 
-SPT maps user virtual memory to kernel virtual memory (or swap, or memory mapped file) while Frame tables maps the kernel virtual memory to physical memory. The struct of each entry contains their basic attributes.
+SPT maps user virtual memory to kernel virtual memory (or swap, or memory mapped file) 
+while Frame tables maps the kernel virtual memory to physical memory. 
+
+The struct of each entry contains their basic attributes.
+When passing the pointer to the structs instead of the address, 
+more relative data and attibute could be easily accessed.
+(Otherwise we will have to use a hash table or a list to find the structure)
 
                PAGING TO AND FROM DISK
                =======================
@@ -82,15 +105,34 @@ SPT maps user virtual memory to kernel virtual memory (or swap, or memory mapped
 >> B1: Copy here the declaration of each new or changed `struct` or
 >> `struct` member, global or static variable, `typedef`, or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+in `page.h`:
+```c
+/* where the data of a page in */
+enum page_type{
+	FRAME,
+	SWAP,
+	FILE
+};
 
+/* spt entry with information about page */
+struct sup_page_table_entry {
+	/* information for swap */
+	enum page_type status;				/* where the data are in */
+	struct frame_table_entry* frame;	/* frame */
+	size_t swap_id;						/* swap index in bitmap table */
+			
+};
+```
+in `frame.h`:
 ```c
 struct frame_table_entry {
-	struct list_element *ele;		/* for list */
-	uint32_t* frame;  				/* ptr to page that currently occupies it */
-	struct thread* owner;			/* the thread who owns it */
-	struct sup_page_entry* page;	/* ptr to supplemental page entry */
+	struct list_elem ele;					/* for list */
+	uint32_t* frame;  						/* ptr to page that currently occupies it */
+	struct thread* owner;					/* the thread who owns it */
+	struct sup_page_table_entry* page;		/* ptr to supplemental page entry */
 // Maybe store information for memory mapped files here too?
 };
+
 ```
 
 ---- ALGORITHMS ----
@@ -104,7 +146,31 @@ A random frame is selected and evicted as long as it is not occupied by mmap cri
 >> process Q, how do you adjust the page table (and any other data
 >> structures) to reflect the frame Q no longer has?
 
-In `struct frame_table_entry`,  `owner` makers which process owns this frame and `page` marks which page is now occupying this frame.
+As described in **pintos-Guide**,
+> • You will be evicting the frame, therefore you the page associated with the frame you have 
+> selected needs to be unlinked. Then you want to remove this frame from your frame table
+> after you have freed the frame with `pagedir_clear_page`
+> 
+> • You do not want to delete the supplementary page table entry associated with the selected
+> frame. The process that was using the frame should still have the illusion that they still
+> have this page allocated to them. If you delete this page table entry, you will not be able to
+> reclaim the data from disk when needed.
+> 
+> • Find a free block to write your data to. Since the blocks are just numbered contiguously, you
+> just need an index that is free. Now this index is going to be needed to reclaim the data of
+> the page, therefore it would be best to keep this index of where the data is in some member
+> variable in the supplemental page table entry
+> 
+> • You’ll also want to keep track of which pages are evicted and which are not for quick checking
+
+In `struct frame_table_entry`,  `owner` marks which process owns this frame and `page` 
+marks which page is now occupying this frame. We will not delete the page, 
+but the page and the frame is no longer linked.
+
+This way, after eviction, the `frame` pointer of Q is set to `NULL` and its `status` is set to 
+`SWAP`, meaning it is now linked with no frame and the data is written to the swap slots on the disk.
+
+Therefore it is garanteed that the frame is associated with page P instead of Q.
 
 >> B4: Explain your heuristic for deciding whether a page fault for an
 >> invalid virtual address should cause the stack to be extended into
@@ -126,14 +192,21 @@ The stack will be extended into the page.
 >> textbook for an explanation of the necessary conditions for
 >> deadlock.)
 
-At each time a swap happens, a system-wise lock should be acquired before the actual manipulation begins.
+At each time a swap happens, a system-wise lock should be acquired 
+before the actual manipulation begins and released as soon as the 
+operation id finished. 
+
+Therefore all operations about `file`, `frame`, `swap` are atomic and
+there will be no data race or deadlock.
 
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
 
-The eviction process happens during page fault, which is an interruption. Process Q will not be scheduled until the eviction is done. The frame to be evited is chosen at random. Such race won't happen unless there remains only one available physical page.
+The eviction process happens during page fault, which is an interruption. 
+Process Q will not be scheduled until the eviction is done. 
+The frame to be evited is chosen at random. Such race won't happen unless there remains only one available physical page.
 
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
