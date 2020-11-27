@@ -76,15 +76,49 @@ spt_create_page (uint32_t vaddr)
 }
 
 
+struct sup_page_table_entry* 
+spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable)
+{
+	struct sup_page_table_entry* newPage = spt_init_page(vaddr, false, false);
+	/* if page allocation failed */
+	if(newPage == NULL){
+		return NULL;
+	}
+
+	/* if vaddr accessed */
+	if(hash_insert(&thread_current()->spt_hash_table, &newPage->hash_ele)!=NULL){
+		free(newPage);
+		return NULL;
+	}
+
+	/* if success, map a file for it */
+	newPage->type = FILE;
+	newPage->frame = NULL;
+	newPage->file = file;
+	newPage->file_offset = offset;
+	newPage->file_bytes = file_bytes;
+	newPage->writable = writable;
+
+	return newPage;
+}
+
 /* free resource of the page at address `vaddr` 
    and remove it from hash table 
  */
 void* 
 spt_free_page (uint32_t vaddr)
 {
-	if(struct sup_page_table_entry* page =  spt_hash_lookup(vaddr) == NULL){
+	struct sup_page_table_entry* page =  spt_hash_lookup(vaddr);
+	if(page == NULL){
 		return NULL;
 	}
+
+	// free a mmap file page
+	if(file){
+		unmap();
+		return;
+	}
+
 	ft_free_frame(page->frame);
 	hash_delete(&thread_current()->spt_hash_table, &page->hash_ele);
 	free(page);

@@ -15,9 +15,18 @@
 #include "threads/vaddr.h"  // for is_kernel_vaddr() to check ptr
 
 
-
 #define SYS_CALL_NUM_MIN 0
-#define SYS_CALL_NUM_MAX 12
+
+#ifdef USERPROG
+  #define SYS_CALL_NUM_MAX 12
+#endif
+
+// #ifdef VM
+  #include "vm/swap.h"
+  #include "vm/frame.h"
+  #include "vm/page.h"
+  #define SYS_CALL_NUM_MAX 14
+// #endif
 
 static void syscall_handler(struct intr_frame *);
 
@@ -44,7 +53,11 @@ syscall_handler(struct intr_frame *f UNUSED)
   }
   int sysCallNum = *sp;
   ASSERT(sysCallNum >= SYS_CALL_NUM_MIN && sysCallNum <= SYS_CALL_NUM_MAX);
-  
+
+  #ifdef VM
+  thread_current()->kernel_esp_temp = sp;
+  #endif
+
   // `sysCallNum`is stored in stack pointer(f.esp)
   // sysCall function returns by modifying `f.eax`
   switch (sysCallNum)
@@ -137,8 +150,22 @@ syscall_handler(struct intr_frame *f UNUSED)
     }
     close(*(sp + 1));
     break;
-  }
 
+  case SYS_MMAP:
+    if(!check_pointers(sp+1, 2) || !is_user_vaddr (sp+1) || !is_user_vaddr (sp+2)){
+      exit(-1);
+    }
+    f->eax = mmap(*(sp + 1), *(sp + 2));
+    break;
+
+  case SYS_MUNMAP:
+    if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
+      exit(-1);
+    }
+    munmap(*(sp + 1));
+    break;
+
+  }
   // thread_exit(); // terminate the thread
 }
 
@@ -397,6 +424,59 @@ void close(int fd)
   return;
 }
 
+
+mapid_t mmap(int fd, void *addr){
+  // stdin,stdout,指针无效,指针非page
+  if (fd < 2 || addr == NULL || pg_ofs(addr) != 0) return MAP_FAILED;
+  struct thread *cur = thread_current();
+
+  lock_acquire (&filesys_lock);
+
+  struct file_descriptor* file_d = find_file_descriptor_by_fd(fd);
+  struct file *f = NULL;
+  size_t f_size;
+
+  if(file_d && file_d->file) {
+    f = file_reopen (file_d->file);
+    f_size = file_length(f);
+  }
+
+  if(f == NULL || f_size == 0) goto mmap_not_success;
+
+  for (size_t i = 0; i < f_size; i += PGSIZE) {
+    // 原位有其他page
+    if (spt_hash_lookup(addr+i)!=NULL) goto mmap_not_success;
+  }
+
+  //创建file page
+  for (size_t i = 0; i < f_size; i += PGSIZE) {
+    size_t file_bytes = (i + PGSIZE < f_size ? PGSIZE : f_size - i);
+    spt_create_file_mmap_page(addr, f, i, file_bytes, true);
+  }
+
+  //指定md
+  mapid_t md;
+  if (!list_empty(&cur->mmap_descriptor_list)) {
+    md = list_entry(list_back(&cur->mmap_descriptor_list), struct mmap_descriptor, elem)->md + 1;
+  }else{
+    md = 1;
+  }
+
+  struct mmap_descriptor *m = (struct mmap_descriptor*) malloc(sizeof(struct mmap_descriptor));
+  m->md = md;
+  m->file = f;
+  m->addr = addr;
+  m->size = f_size;
+  list_push_back (&cur->mmap_descriptor_list, &m->elem);
+
+  lock_release (&filesys_lock);
+  return md;
+
+  mmap_not_success:
+
+  lock_release (&filesys_lock);
+  return MAP_FAILED;
+}
 /********************** helper functions ***************************************/
 
 /* as the name, return f with a valid file*
@@ -417,6 +497,24 @@ find_file_descriptor_by_fd(int fd){
     struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
       if(f->fd == fd && check_pointer(f->file)){
         return f;
+      }    
+  }
+
+  return NULL;
+}
+
+struct mmap_descriptor*
+find_mmap_descriptor_by_md(mapid_t md){
+  struct list* l = &thread_current()->mmap_descriptor_list;
+  if(list_empty(&l)) 
+    return NULL;
+
+  // printf ("\nsize: %d\n",list_size(&l));
+  for (struct list_elem *e = list_begin (l); e != list_end (l); e = list_next (e))
+  {
+    struct mmap_descriptor *m = list_entry (e, struct mmap_descriptor, elem);
+      if(m->md == md){
+        return m;
       }    
   }
 

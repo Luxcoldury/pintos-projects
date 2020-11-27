@@ -9,10 +9,11 @@
 #include "threads/vaddr.h"
 #include "threads/thread.h"
 #include "threads/palloc.h"
-#include "vm/swap.h"
-#include "vm/frame.h"
-#include "vm/page.h"
-
+// #ifdef VM
+  #include "vm/swap.h"
+  #include "vm/frame.h"
+  #include "vm/page.h"
+// #endif
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
