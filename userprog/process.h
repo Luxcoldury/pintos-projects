@@ -40,5 +40,14 @@ struct file_descriptor{
   struct file *file;      // the opened file
 };
 
+struct mmap_descriptor{
+  struct list_elem elem;  // for list operation
+
+  mapid_t md;             // md number (start from 1)
+  struct file *file;      // the opened file
+  void *addr;             // mmap first page
+  size_t size;            // file size
+};
+
 
 #endif /* userprog/process.h */

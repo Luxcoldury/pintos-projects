@@ -14,6 +14,8 @@
 
 /* spt entry with information about page */
 struct sup_page_table_entry {
+	page_status status;
+
 	/* for hash */
 	struct hash_elem hash_ele;		/* hash element */
 	uint32_t* user_vaddr;			/* virtual address, as a key in hash table */
@@ -31,9 +33,15 @@ struct sup_page_table_entry {
 	size_t swap_id;						/* swap index in bitmap table */
 	enum page_type status;				/* where the data are in */
 
+	// for FILE mmap
+	sturct file *file=NULL;
+	size_t file_offset;
+	size_t file_bytes;
+	bool writable;
+
 };
 
-enum page_type{
+enum page_status{
 	FRAME,
 	SWAP,
 	FILE
@@ -44,6 +52,9 @@ struct sup_page_table_entry*  spt_init_page (uint32_t vaddr, bool isDirty, bool 
 void* spt_create_page (uint32_t vaddr);
 void* spt_free_page (uint32_t vaddr);
 
+struct sup_page_table_entry *spt_hash_lookup (const void *address);
+
+struct sup_page_table_entry *spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable);
 
 // for hash uses (included for init_thread )
 unsigned spt_hash (const struct hash_elem *p_, void *aux UNUSED);
