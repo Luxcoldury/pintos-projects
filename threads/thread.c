@@ -96,9 +96,6 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-  #ifdef VM
-  list_init (&mmap_list);
-  #endif
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -485,6 +482,7 @@ init_thread (struct thread *t, const char *name, int priority)
   #ifndef VM
   /* Owned by `vm/page.c`. */
   hash_init(&t->spt_hash_table, spt_hash, spt_hash_less, NULL); /* init hashtable */
+  list_init (&t->mmap_descriptor_list);
   #endif/* for proj3 */
 
   old_level = intr_disable ();
