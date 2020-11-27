@@ -19,13 +19,6 @@ struct sup_page_table_entry {
 	uint32_t* user_vaddr;			/* virtual address, as a key in hash table */
 	struct lock spt_lock;			/* lock to provide page operation e.g. hash */
 
-	/* for LRU evict in frame */
-	uint64_t access_time;
-// You can use the provided PTE functions instead. I’ve posted links to
-// the documentation below, dirty and accessed暂时没有用到
-	bool dirty=false;					/* if modified */
-	bool accessed=false;				/* if accessed */ 
-
 	/* information for swap */
 	struct frame_table_entry* frame;	/* frame */
 	size_t swap_id;						/* swap index in bitmap table */
@@ -33,6 +26,7 @@ struct sup_page_table_entry {
 
 	// for FILE mmap
 	sturct file *file=NULL;
+	bool dirty=false;					/* if modified */
 	size_t file_offset;
 	size_t file_bytes;
 	bool writable;
@@ -46,7 +40,7 @@ enum page_status{
 };
 
 // for spt operations
-struct sup_page_table_entry*  spt_init_page (uint32_t vaddr, bool isDirty, bool isAccessed);
+struct sup_page_table_entry*  spt_init_page (uint32_t vaddr, bool isDirty);
 void* spt_create_page (uint32_t vaddr);
 void* spt_free_page (uint32_t vaddr);
 

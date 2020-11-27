@@ -55,20 +55,7 @@ ft_evict_frame(struct sup_page_entry* page)
            e = list_next (e))
         {
           struct frame_table_entry *fte = list_entry (e, struct frame_table_entry, elem);
-		  int access_time = fte->page->access_time;
-		  bool accessed = fte->page->accessed;
 
-		  /* if any page is not accessed, swap out its frame */
-		  if(! accessed ){
-			swap_eviction(fte);
-			return fte;
-		  }
-
-		  /* else use LRU */
-		  if(access_time < earlist_time){
-			  earlist_time = access_time;
-			  struct frame_table_entry* evict_frame = fte;
-		  }
         }
 	swap_eviction(evict_frame);
 	return evict_frame;
