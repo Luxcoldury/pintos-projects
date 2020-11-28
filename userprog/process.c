@@ -118,6 +118,10 @@ start_process (void *pcb_)
   // printf("\n\n----exename:%s----\n\n",exe_name);
   // printf("\n\n----argvs:%s----\n\n",argvs);
 
+  /* for VM */
+  hash_init(&thread_current()->spt_hash_table, spt_hash, spt_hash_less, NULL); /* init hashtable */
+
+
   success = load (exe_name, &if_.eip, &if_.esp); // 传给load的只有exe本身
 
   /* If load failed, quit. */
@@ -280,6 +284,15 @@ process_exit (void)
     file_close(f->file);
     palloc_free_page(f);
   }
+#ifdef VM
+    /* close mmap files */
+  while (!list_empty(&cur->mmap_descriptor_list)) {
+    struct list_elem *e = list_pop_front (&cur->mmap_descriptor_list);
+    struct file_descriptor *m = list_entry (e, struct mmap_descriptor, elem);
+    munmap(m);
+  }
+#endif
+
   /* close files */
   if(cur->owner_file){
     file_allow_write(cur->owner_file);
@@ -293,7 +306,7 @@ process_exit (void)
     if (pcb->exited == true) {
       palloc_free_page (pcb);
     } else {
-      pcb->parent_dead = true;//爸爸先死了_(:з」∠)_
+      pcb->parent_dead = true;  //爸爸先死了_(:з」∠)_
       pcb->parent_thread = NULL;
     }
   }
@@ -302,13 +315,14 @@ process_exit (void)
   bool parent_dead = cur->pcb->parent_dead;
   sema_up(&cur->pcb->sema_being_waited_by_father);
 
-  if (parent_dead)
-    palloc_free_page(&cur->pcb);
-    
   /* for VM, destroy the supplemental page hashtable */
   #ifdef VM
     spt_destroy_hash(cur);
   #endif /* VM */
+
+  if (parent_dead)
+    palloc_free_page(&cur->pcb);
+    
   
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */

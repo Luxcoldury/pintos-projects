@@ -49,6 +49,8 @@ ft_evict_frame(void)
 struct frame_table_entry *
 ft_get_frame (struct sup_page_table_entry* page)
 {
+	lock_acquire(&ft_lock);
+
 	uint32_t* ft_vaddr = palloc_get_page(PAL_USER);
 	struct frame_table_entry* fte;
 	/* if has free frame */
@@ -72,6 +74,7 @@ ft_get_frame (struct sup_page_table_entry* page)
 	fte->do_not_swap = false;
 	list_push_back(&frame_table, &fte->ele);
 
+	lock_release(&ft_lock);
 	return fte;
 }
 
@@ -80,8 +83,12 @@ ft_get_frame (struct sup_page_table_entry* page)
 void 
 ft_free_frame (struct frame_table_entry* fte)
 {
+	lock_acquire(&ft_lock);
+
 	list_remove(&fte->ele);
 	palloc_free_page(fte->frame);
 	free(fte);
+
+	lock_release(&ft_lock);
 }
 

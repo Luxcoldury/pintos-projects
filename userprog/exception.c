@@ -15,6 +15,10 @@
   #include "vm/page.h"
   #include "filesys/file.h"     // syscall
 // #endif
+
+#define MAX_STACK_SIZE 0x800000
+
+
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
@@ -133,7 +137,7 @@ static void
 page_fault (struct intr_frame *f) 
 {
   bool not_present;  /* True: not-present page, false: writing r/o page. */
-  bool write;        /* True: access was write, false: access was read. */
+  // bool write;        /* True: access was write, false: access was read. */
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
 
@@ -155,14 +159,14 @@ page_fault (struct intr_frame *f)
 
   /* Determine cause. */
   not_present = (f->error_code & PF_P) == 0;
-  write = (f->error_code & PF_W) != 0;
+  // write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
 #ifdef VM
   /* Project 3: deal with page faults. */
   // bad ptr*4: NULL, kernel, write to read-only, no data -> exit(-1)
   /* deal with the former three cases*/
-  if (fault_addr == NULL ||is_kernel_vaddr(fault_addr) || !not_present) {
+  if (fault_addr == NULL || is_kernel_vaddr(fault_addr) || !not_present) {
     goto real_page_fault;
   }
 
@@ -170,46 +174,29 @@ page_fault (struct intr_frame *f)
   void* esp = user ? f->esp : thread_current()->kernel_esp_temp;
 
   /* whether in spt */
-  struct sup_page_table_entry *existing_spt_page = spt_hash_lookup(fault_addr);
+  // printf("\nbad address: %p\n", fault_addr);
+  // printf("\naddress of hash table: %p\n", &thread_current()->spt_hash_table);
+  uint32_t* upage = (uint32_t*)pg_round_down(fault_addr);
+  
+  struct sup_page_table_entry *existing_spt_page = spt_hash_lookup(upage);
 
   /* if in spt: if has data, load data */
   if(existing_spt_page!=NULL){
-    bool load_success = false;
-
     /* if no frame: allocate frame and load data */
-    if(existing_spt_page->status == SWAP){
-      struct frame_table_entry* new_fte = ft_get_frame(existing_spt_page);
-      if (new_fte!=NULL){
-        swap_reclamation(new_fte, existing_spt_page);
-        load_success = true;
-      }
-    }else if(existing_spt_page->status == FILE){
-      struct frame_table_entry* new_fte = ft_get_frame(existing_spt_page);
-      if(new_fte==NULL || existing_spt_page->file==NULL)
-        goto real_page_fault;
-
-      file_seek (existing_spt_page->file, existing_spt_page->file_offset);
-      off_t read_bytes = file_read (existing_spt_page->file, new_fte->frame, existing_spt_page->file_bytes);
-      if(read_bytes != (off_t)existing_spt_page->file_bytes)
-        goto real_page_fault;
-      memset (new_fte->frame + read_bytes, 0, PGSIZE - existing_spt_page->file_bytes);
-
-      existing_spt_page->status == FRAME;
-    }
-    if(load_success){
+    if(spt_reallocate_frame_and_load(existing_spt_page)){
       return;
     }
     goto real_page_fault;
   }
 
   /* if not in spt: either sp or `real page fault` */
-  if( (int)fault_addr < 0x08048000 || (fault_addr != esp-32 && fault_addr != esp-4))
+  bool within_stack = (fault_addr < PHYS_BASE && fault_addr >= PHYS_BASE - MAX_STACK_SIZE);
+  bool not_sp = (fault_addr != esp-32 && fault_addr != esp-4);
+  if( !within_stack || not_sp )
     goto real_page_fault;
 
   /* legal sp, grow stack */
-  uint32_t* upage = pg_round_down(fault_addr);
   struct sup_page_table_entry* newPage = spt_create_page(upage);
-  
   if (newPage != NULL)
     return;
 
@@ -233,11 +220,11 @@ the process can proceed, make sure you do not run the last two lines */
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
-  kill (f);
+  // printf ("Page fault at %p: %s error %s page in %s context.\n",
+  //         fault_addr,
+  //         not_present ? "not present" : "rights violation",
+  //         write ? "writing" : "reading",
+  //         user ? "user" : "kernel");
+  // kill (f);
 }
 

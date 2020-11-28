@@ -1,89 +1,5 @@
-mkdir -p build/devices
-mkdir -p build/filesys
-mkdir -p build/lib
-mkdir -p build/lib/kernel
-mkdir -p build/lib/user
-mkdir -p build/tests/filesys/base
-mkdir -p build/tests/userprog
-mkdir -p build/tests/vm
-mkdir -p build/threads
-mkdir -p build/userprog
-mkdir -p build/vm
-cp ../Makefile.build build/Makefile
 cd build && make check
 make[1]: Entering directory '/home/pintos/group06/vm/build'
-gcc -m32 -E -nostdinc -I../.. -I../../lib -I../../lib/kernel -P ../../threads/kernel.lds.S > threads/kernel.lds.s
-gcc -m32 -c ../../threads/start.S -o threads/start.o -Wa,--gstabs -nostdinc -I../.. -I../../lib -I../../lib/kernel -DUSERPROG -DFILESYS -DVM -MMD -MF threads/start.d
-gcc -m32 -c ../../threads/init.c -o threads/init.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF threads/init.d
-gcc -m32 -c ../../threads/thread.c -o threads/thread.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF threads/thread.d
-gcc -m32 -c ../../threads/switch.S -o threads/switch.o -Wa,--gstabs -nostdinc -I../.. -I../../lib -I../../lib/kernel -DUSERPROG -DFILESYS -DVM -MMD -MF threads/switch.d
-gcc -m32 -c ../../threads/interrupt.c -o threads/interrupt.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF threads/interrupt.d
-gcc -m32 -c ../../threads/intr-stubs.S -o threads/intr-stubs.o -Wa,--gstabs -nostdinc -I../.. -I../../lib -I../../lib/kernel -DUSERPROG -DFILESYS -DVM -MMD -MF threads/intr-stubs.d
-gcc -m32 -c ../../threads/synch.c -o threads/synch.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF threads/synch.d
-gcc -m32 -c ../../threads/palloc.c -o threads/palloc.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF threads/palloc.d
-gcc -m32 -c ../../threads/malloc.c -o threads/malloc.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF threads/malloc.d
-gcc -m32 -c ../../devices/pit.c -o devices/pit.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/pit.d
-gcc -m32 -c ../../devices/timer.c -o devices/timer.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/timer.d
-gcc -m32 -c ../../devices/kbd.c -o devices/kbd.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/kbd.d
-gcc -m32 -c ../../devices/vga.c -o devices/vga.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/vga.d
-gcc -m32 -c ../../devices/serial.c -o devices/serial.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/serial.d
-gcc -m32 -c ../../devices/block.c -o devices/block.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/block.d
-gcc -m32 -c ../../devices/partition.c -o devices/partition.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/partition.d
-gcc -m32 -c ../../devices/ide.c -o devices/ide.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/ide.d
-gcc -m32 -c ../../devices/input.c -o devices/input.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/input.d
-gcc -m32 -c ../../devices/intq.c -o devices/intq.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/intq.d
-gcc -m32 -c ../../devices/rtc.c -o devices/rtc.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/rtc.d
-gcc -m32 -c ../../devices/shutdown.c -o devices/shutdown.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/shutdown.d
-gcc -m32 -c ../../devices/speaker.c -o devices/speaker.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF devices/speaker.d
-gcc -m32 -c ../../lib/debug.c -o lib/debug.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/debug.d
-gcc -m32 -c ../../lib/random.c -o lib/random.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/random.d
-gcc -m32 -c ../../lib/stdio.c -o lib/stdio.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/stdio.d
-gcc -m32 -c ../../lib/stdlib.c -o lib/stdlib.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/stdlib.d
-gcc -m32 -c ../../lib/string.c -o lib/string.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/string.d
-gcc -m32 -c ../../lib/arithmetic.c -o lib/arithmetic.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/arithmetic.d
-gcc -m32 -c ../../lib/ustar.c -o lib/ustar.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/ustar.d
-gcc -m32 -c ../../lib/kernel/debug.c -o lib/kernel/debug.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/kernel/debug.d
-gcc -m32 -c ../../lib/kernel/list.c -o lib/kernel/list.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/kernel/list.d
-gcc -m32 -c ../../lib/kernel/bitmap.c -o lib/kernel/bitmap.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/kernel/bitmap.d
-gcc -m32 -c ../../lib/kernel/hash.c -o lib/kernel/hash.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/kernel/hash.d
-gcc -m32 -c ../../lib/kernel/console.c -o lib/kernel/console.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF lib/kernel/console.d
-gcc -m32 -c ../../userprog/process.c -o userprog/process.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF userprog/process.d
-gcc -m32 -c ../../userprog/pagedir.c -o userprog/pagedir.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF userprog/pagedir.d
-gcc -m32 -c ../../userprog/exception.c -o userprog/exception.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF userprog/exception.d
-gcc -m32 -c ../../userprog/syscall.c -o userprog/syscall.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF userprog/syscall.d
-gcc -m32 -c ../../userprog/gdt.c -o userprog/gdt.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF userprog/gdt.d
-gcc -m32 -c ../../userprog/tss.c -o userprog/tss.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF userprog/tss.d
-gcc -m32 -c ../../filesys/filesys.c -o filesys/filesys.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF filesys/filesys.d
-gcc -m32 -c ../../filesys/free-map.c -o filesys/free-map.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF filesys/free-map.d
-gcc -m32 -c ../../filesys/file.c -o filesys/file.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF filesys/file.d
-gcc -m32 -c ../../filesys/directory.c -o filesys/directory.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF filesys/directory.d
-gcc -m32 -c ../../filesys/inode.c -o filesys/inode.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF filesys/inode.d
-gcc -m32 -c ../../filesys/fsutil.c -o filesys/fsutil.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF filesys/fsutil.d
-gcc -m32 -c ../../vm/page.c -o vm/page.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF vm/page.d
-gcc -m32 -c ../../vm/frame.c -o vm/frame.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF vm/frame.d
-gcc -m32 -c ../../vm/swap.c -o vm/swap.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/kernel -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -DUSERPROG -DFILESYS -DVM -MMD -MF vm/swap.d
-ld -melf_i386 -T threads/kernel.lds.s -o kernel.o threads/start.o threads/init.o threads/thread.o threads/switch.o threads/interrupt.o threads/intr-stubs.o threads/synch.o threads/palloc.o threads/malloc.o devices/pit.o devices/timer.o devices/kbd.o devices/vga.o devices/serial.o devices/block.o devices/partition.o devices/ide.o devices/input.o devices/intq.o devices/rtc.o devices/shutdown.o devices/speaker.o lib/debug.o lib/random.o lib/stdio.o lib/stdlib.o lib/string.o lib/arithmetic.o lib/ustar.o lib/kernel/debug.o lib/kernel/list.o lib/kernel/bitmap.o lib/kernel/hash.o lib/kernel/console.o userprog/process.o userprog/pagedir.o userprog/exception.o userprog/syscall.o userprog/gdt.o userprog/tss.o filesys/filesys.o filesys/free-map.o filesys/file.o filesys/directory.o filesys/inode.o filesys/fsutil.o vm/page.o vm/frame.o vm/swap.o
-objcopy -R .note -R .comment -S kernel.o kernel.bin
-gcc -m32 -c ../../threads/loader.S -o threads/loader.o -Wa,--gstabs -nostdinc -I../.. -I../../lib 
-ld -melf_i386 -N -e 0 -Ttext 0x7c00 --oformat binary -o loader.bin threads/loader.o
-gcc -m32 -c ../../tests/userprog/args.c -o tests/userprog/args.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF tests/userprog/args.d
-gcc -m32 -c ../../tests/lib.c -o tests/lib.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF tests/lib.d
-gcc -m32 -c ../../lib/user/entry.c -o lib/user/entry.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF lib/user/entry.d
-gcc -m32 -c ../../lib/user/debug.c -o lib/user/debug.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF lib/user/debug.d
-gcc -m32 -c ../../lib/user/syscall.c -o lib/user/syscall.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF lib/user/syscall.d
-gcc -m32 -c ../../lib/user/console.c -o lib/user/console.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF lib/user/console.d
-rm -f libc.a
-ar r libc.a lib/debug.o lib/random.o lib/stdio.o lib/stdlib.o lib/string.o lib/arithmetic.o lib/ustar.o lib/user/debug.o lib/user/syscall.o lib/user/console.o
-ranlib libc.a
-gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../lib/user/user.lds tests/userprog/args.o tests/lib.o lib/user/entry.o libc.a -o tests/userprog/args-none
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/args-none -a args-none --swap-size=4 -- -q  -f run args-none < /dev/null 2> tests/userprog/args-none.errors > tests/userprog/args-none.output
-perl -I../.. ../../tests/userprog/args-none.ck tests/userprog/args-none tests/userprog/args-none.result
-pass tests/userprog/args-none
-gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../lib/user/user.lds tests/userprog/args.o tests/lib.o lib/user/entry.o libc.a -o tests/userprog/args-single
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/args-single -a args-single --swap-size=4 -- -q  -f run 'args-single onearg' < /dev/null 2> tests/userprog/args-single.errors > tests/userprog/args-single.output
-perl -I../.. ../../tests/userprog/args-single.ck tests/userprog/args-single tests/userprog/args-single.result
-pass tests/userprog/args-single
-gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../lib/user/user.lds tests/userprog/args.o tests/lib.o lib/user/entry.o libc.a -o tests/userprog/args-multiple
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/args-multiple -a args-multiple --swap-size=4 -- -q  -f run 'args-multiple some arguments for you!' < /dev/null 2> tests/userprog/args-multiple.errors > tests/userprog/args-multiple.output
 perl -I../.. ../../tests/userprog/args-multiple.ck tests/userprog/args-multiple tests/userprog/args-multiple.result
 pass tests/userprog/args-multiple
@@ -418,33 +334,23 @@ gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../l
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/vm/pt-grow-stack -a pt-grow-stack --swap-size=4 -- -q  -f run pt-grow-stack < /dev/null 2> tests/vm/pt-grow-stack.errors > tests/vm/pt-grow-stack.output
 perl -I../.. ../../tests/vm/pt-grow-stack.ck tests/vm/pt-grow-stack tests/vm/pt-grow-stack.result
 FAIL tests/vm/pt-grow-stack
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (pt-grow-stack) begin
-  (pt-grow-stack) cksum: 3424492700
-  (pt-grow-stack) end
-Differences in `diff -u' format:
-  (pt-grow-stack) begin
-- (pt-grow-stack) cksum: 3424492700
-- (pt-grow-stack) end
-
-(Process exit codes are excluded for matching purposes.)
+Kernel panic in run: PANIC at ../../threads/palloc.c:140 in palloc_free_multiple(): assertion `bitmap_all (pool->used_map, page_idx, page_cnt)' failed.
+Call stack: 0xc0029cf6 0x665f636f
+Translation of call stack:
+In kernel.o:
+0xc0029cf6: debug_panic (.../../lib/kernel/debug.c:38)
+0x665f636f: (unknown)
 gcc -m32 -c ../../tests/vm/pt-grow-pusha.c -o tests/vm/pt-grow-pusha.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF tests/vm/pt-grow-pusha.d
 gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../lib/user/user.lds tests/vm/pt-grow-pusha.o tests/lib.o tests/main.o lib/user/entry.o libc.a -o tests/vm/pt-grow-pusha
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/vm/pt-grow-pusha -a pt-grow-pusha --swap-size=4 -- -q  -f run pt-grow-pusha < /dev/null 2> tests/vm/pt-grow-pusha.errors > tests/vm/pt-grow-pusha.output
 perl -I../.. ../../tests/vm/pt-grow-pusha.ck tests/vm/pt-grow-pusha tests/vm/pt-grow-pusha.result
 FAIL tests/vm/pt-grow-pusha
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (pt-grow-pusha) begin
-  (pt-grow-pusha) end
-Differences in `diff -u' format:
-  (pt-grow-pusha) begin
-- (pt-grow-pusha) end
-
-(Process exit codes are excluded for matching purposes.)
+Kernel panic in run: PANIC at ../../threads/palloc.c:140 in palloc_free_multiple(): assertion `bitmap_all (pool->used_map, page_idx, page_cnt)' failed.
+Call stack: 0xc0029cf6 0x665f636f
+Translation of call stack:
+In kernel.o:
+0xc0029cf6: debug_panic (.../../lib/kernel/debug.c:38)
+0x665f636f: (unknown)
 gcc -m32 -c ../../tests/vm/pt-grow-bad.c -o tests/vm/pt-grow-bad.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF tests/vm/pt-grow-bad.d
 gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../lib/user/user.lds tests/vm/pt-grow-bad.o tests/lib.o tests/main.o lib/user/entry.o libc.a -o tests/vm/pt-grow-bad
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/vm/pt-grow-bad -a pt-grow-bad --swap-size=4 -- -q  -f run pt-grow-bad < /dev/null 2> tests/vm/pt-grow-bad.errors > tests/vm/pt-grow-bad.output
@@ -455,18 +361,12 @@ gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../l
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/vm/pt-big-stk-obj -a pt-big-stk-obj --swap-size=4 -- -q  -f run pt-big-stk-obj < /dev/null 2> tests/vm/pt-big-stk-obj.errors > tests/vm/pt-big-stk-obj.output
 perl -I../.. ../../tests/vm/pt-big-stk-obj.ck tests/vm/pt-big-stk-obj tests/vm/pt-big-stk-obj.result
 FAIL tests/vm/pt-big-stk-obj
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (pt-big-stk-obj) begin
-  (pt-big-stk-obj) cksum: 3256410166
-  (pt-big-stk-obj) end
-Differences in `diff -u' format:
-  (pt-big-stk-obj) begin
-- (pt-big-stk-obj) cksum: 3256410166
-- (pt-big-stk-obj) end
-
-(Process exit codes are excluded for matching purposes.)
+Kernel panic in run: PANIC at ../../threads/palloc.c:140 in palloc_free_multiple(): assertion `bitmap_all (pool->used_map, page_idx, page_cnt)' failed.
+Call stack: 0xc0029cf6 0x665f636f
+Translation of call stack:
+In kernel.o:
+0xc0029cf6: debug_panic (.../../lib/kernel/debug.c:38)
+0x665f636f: (unknown)
 gcc -m32 -c ../../tests/vm/pt-bad-addr.c -o tests/vm/pt-bad-addr.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF tests/vm/pt-bad-addr.d
 gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../lib/user/user.lds tests/vm/pt-bad-addr.o tests/lib.o tests/main.o lib/user/entry.o libc.a -o tests/vm/pt-bad-addr
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/vm/pt-bad-addr -a pt-bad-addr --swap-size=4 -- -q  -f run pt-bad-addr < /dev/null 2> tests/vm/pt-bad-addr.errors > tests/vm/pt-bad-addr.output
@@ -492,28 +392,12 @@ gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../l
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/vm/pt-grow-stk-sc -a pt-grow-stk-sc --swap-size=4 -- -q  -f run pt-grow-stk-sc < /dev/null 2> tests/vm/pt-grow-stk-sc.errors > tests/vm/pt-grow-stk-sc.output
 perl -I../.. ../../tests/vm/pt-grow-stk-sc.ck tests/vm/pt-grow-stk-sc tests/vm/pt-grow-stk-sc.result
 FAIL tests/vm/pt-grow-stk-sc
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (pt-grow-stk-sc) begin
-  (pt-grow-stk-sc) create "sample.txt"
-  (pt-grow-stk-sc) open "sample.txt"
-  (pt-grow-stk-sc) write "sample.txt"
-  (pt-grow-stk-sc) 2nd open "sample.txt"
-  (pt-grow-stk-sc) read "sample.txt"
-  (pt-grow-stk-sc) compare written data against read data
-  (pt-grow-stk-sc) end
-Differences in `diff -u' format:
-  (pt-grow-stk-sc) begin
-- (pt-grow-stk-sc) create "sample.txt"
-- (pt-grow-stk-sc) open "sample.txt"
-- (pt-grow-stk-sc) write "sample.txt"
-- (pt-grow-stk-sc) 2nd open "sample.txt"
-- (pt-grow-stk-sc) read "sample.txt"
-- (pt-grow-stk-sc) compare written data against read data
-- (pt-grow-stk-sc) end
-
-(Process exit codes are excluded for matching purposes.)
+Kernel panic in run: PANIC at ../../threads/palloc.c:140 in palloc_free_multiple(): assertion `bitmap_all (pool->used_map, page_idx, page_cnt)' failed.
+Call stack: 0xc0029cf6 0x665f636f
+Translation of call stack:
+In kernel.o:
+0xc0029cf6: debug_panic (.../../lib/kernel/debug.c:38)
+0x665f636f: (unknown)
 gcc -m32 -c ../../tests/vm/page-linear.c -o tests/vm/page-linear.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF tests/vm/page-linear.d
 gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../lib/user/user.lds tests/vm/page-linear.o tests/arc4.o tests/lib.o tests/main.o lib/user/entry.o libc.a -o tests/vm/page-linear
 pintos -v -k -T 300 --qemu  --filesys-size=2 -p tests/vm/page-linear -a page-linear --swap-size=4 -- -q  -f run page-linear < /dev/null 2> tests/vm/page-linear.errors > tests/vm/page-linear.output
@@ -903,7 +787,7 @@ gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../l
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/vm/mmap-exit -a mmap-exit -p tests/vm/child-mm-wrt -a child-mm-wrt --swap-size=4 -- -q  -f run mmap-exit < /dev/null 2> tests/vm/mmap-exit.errors > tests/vm/mmap-exit.output
 perl -I../.. ../../tests/vm/mmap-exit.ck tests/vm/mmap-exit tests/vm/mmap-exit.result
 FAIL tests/vm/mmap-exit
-run: TIMEOUT after 122 seconds of wall-clock time - load average: 0.52, 0.62, 0.37
+run: TIMEOUT after 100 seconds of wall-clock time - load average: 0.37, 0.44, 0.26
 gcc -m32 -c ../../tests/vm/mmap-shuffle.c -o tests/vm/mmap-shuffle.o -g -msoft-float -O -march=i686 -fno-stack-protector -nostdinc -I../.. -I../../lib -I../../lib/user -I. -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers  -MMD -MF tests/vm/mmap-shuffle.d
 gcc -m32 -z noseparate-code -Wl,--build-id=none -nostdlib -static -Wl,-T,../../lib/user/user.lds tests/vm/mmap-shuffle.o tests/arc4.o tests/cksum.o tests/lib.o tests/main.o lib/user/entry.o libc.a -o tests/vm/mmap-shuffle
 pintos -v -k -T 600 --qemu  --filesys-size=2 -p tests/vm/mmap-shuffle -a mmap-shuffle --swap-size=4 -- -q  -f run mmap-shuffle < /dev/null 2> tests/vm/mmap-shuffle.errors > tests/vm/mmap-shuffle.output
