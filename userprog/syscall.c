@@ -432,6 +432,7 @@ mapid_t mmap(int fd, void *addr){
   // stdin,stdout,指针无效,指针非page
   if (fd < 2 || addr == NULL || pg_ofs(addr) != 0) return MAP_FAILED;
   struct thread *cur = thread_current();
+  // printf('%p',cur->spt_hash_table);
 
   lock_acquire (&filesys_lock);
 
@@ -481,7 +482,7 @@ mapid_t mmap(int fd, void *addr){
   return MAP_FAILED;
 }
 
-void munmap(mmapid_t md){
+void munmap(mapid_t md){
   struct mmap_descriptor *m = find_mmap_descriptor_by_md(md);
 
   if(m == NULL) {
@@ -492,7 +493,7 @@ void munmap(mmapid_t md){
 
   size_t f_size = m->size;
   for(size_t i = 0; i < f_size; i += PGSIZE) {
-    spt_free_file_mmap_page(addr, f, i, file_bytes, true);
+    spt_free_file_mmap_page(m->addr + i);
   }
 
   file_close(m->file);

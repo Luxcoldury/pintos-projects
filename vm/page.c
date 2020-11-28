@@ -5,6 +5,7 @@
 #include "lib/kernel/hash.h"	/* for hash */
 #include "threads/malloc.h"
 #include "userprog/process.h"	/* install_page */
+#include "filesys/file.h"     // syscall
 
 
 /* Returns a hash value for page p. */
@@ -80,6 +81,10 @@ spt_create_page (uint32_t* vaddr)
 	/* install page and frame */
 	newPage->frame = frame;
 	newPage->status = FRAME;
+    newPage->file=NULL;
+	newPage->file_offset=0;
+	newPage->file_bytes=0;
+	newPage->writable=true;
 	if(!install_page(vaddr, frame->frame, true)){
 		spt_free_page(newPage);
 		return NULL;
@@ -116,73 +121,37 @@ spt_create_file_mmap_page (uint32_t* vaddr, struct file * file, size_t offset, u
 }
 
 void *
-spt_free_file_mmap_page(uint32_t vaddr)
+spt_free_file_mmap_page(uint32_t* vaddr)
 {
-	struct sup_page_table_entry* page =  spt_hash_lookup(vaddr);
+	struct sup_page_table_entry* page = spt_hash_lookup(vaddr);
 	if(page == NULL || page->file)
 		return NULL;
 
-	if(page)
-	
-  // Pin the associated frame if loaded
-  // otherwise, a page fault could occur while swapping in (reading the swap disk)
-  if (spte->status == ON_FRAME) {
-    ASSERT (spte->kpage != NULL);
-    vm_frame_pin (spte->kpage);
-  }
+	struct frame_table_entry* frame = page->frame;
+    struct file* f = page->file;
 
+	switch (page->status) {
+        case FRAME:
+            lock_acquire(&ft_lock);
+            frame->do_not_swap = true;
+            lock_release(&ft_lock);
 
-  // see also, vm_load_page()
-  switch (spte->status)
-  {
-  case ON_FRAME:
-    ASSERT (spte->kpage != NULL);
+            uint32_t* pagedir = thread_current()->pagedir;
+            if(pagedir_is_dirty(pagedir, page->user_vaddr) || pagedir_is_dirty(pagedir, page->frame->frame)) {
+                file_write_at (page->file, page->user_vaddr, page->file_bytes, page->file_offset);
+            }
+            break;
 
-    // Dirty frame handling (write into file)
-    // Check if the upage or mapped frame is dirty. If so, write to file.
-    bool is_dirty = spte->dirty;
-    is_dirty = is_dirty || pagedir_is_dirty(pagedir, spte->upage);
-    is_dirty = is_dirty || pagedir_is_dirty(pagedir, spte->kpage);
-    if(is_dirty) {
-      file_write_at (f, spte->upage, bytes, offset);
-    }
+        case SWAP:
+            swap_reclamation(page->frame,page);
+            file_write_at (page->file, page->user_vaddr, page->file_bytes, page->file_offset);
+            break;
+	}
 
-    // clear the page mapping, and release the frame
-    vm_frame_free (spte->kpage);
-    pagedir_clear_page (pagedir, spte->upage);
-    break;
-
-  case ON_SWAP:
-    {
-      bool is_dirty = spte->dirty;
-      is_dirty = is_dirty || pagedir_is_dirty(pagedir, spte->upage);
-      if (is_dirty) {
-        // load from swap, and write back to file
-        void *tmp_page = palloc_get_page(0); // in the kernel
-        vm_swap_in (spte->swap_index, tmp_page);
-        file_write_at (f, tmp_page, PGSIZE, offset);
-        palloc_free_page(tmp_page);
-      }
-      else {
-        // just throw away the swap.
-        vm_swap_free (spte->swap_index);
-      }
-    }
-    break;
-
-  case FROM_FILESYS:
-    // do nothing.
-    break;
-
-  default:
-    // Impossible, such as ALL_ZERO
-    PANIC ("unreachable state");
-  }
-
-  // the supplemental page table entry is also removed.
-  // so that the unmapped memory is unreachable. Later access will fault.
-  hash_delete(& supt->page_map, &spte->elem);
-  return true;
+    ft_free_frame (page->frame);
+	hash_delete(&thread_current()->spt_hash_table, &page->hash_ele);
+	free(page);
+    return true;
 }
 
 
@@ -193,19 +162,16 @@ spt_free_file_mmap_page(uint32_t vaddr)
 void
 spt_free_page (struct sup_page_table_entry* page)
 {
-	/* for mmap */
-	// free a mmap file page
-	if(page->file){
-		// unmap();
-		return ;
-	}
-
 	/* for swap if on disk */
 	if(page->status == SWAP){
 		swap_free_pagesized_blocks(page->swap_id);
 	}
 	if(page->status == FRAME){
 		ft_free_frame(page->frame);
+	}
+    if(page->status == FILE){
+		spt_free_file_mmap_page(page->frame);
+        return;
 	}
 	hash_delete(&thread_current()->spt_hash_table, &page->hash_ele);
 	free(page);

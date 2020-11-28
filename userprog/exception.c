@@ -13,6 +13,7 @@
   #include "vm/swap.h"
   #include "vm/frame.h"
   #include "vm/page.h"
+  #include "filesys/file.h"     // syscall
 // #endif
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -182,6 +183,18 @@ page_fault (struct intr_frame *f)
         swap_reclamation(new_fte, existing_spt_page);
         load_success = true;
       }
+    }else if(existing_spt_page->status == FILE){
+      struct frame_table_entry* new_fte = ft_get_frame(existing_spt_page);
+      if(new_fte==NULL || existing_spt_page->file==NULL)
+        goto real_page_fault;
+
+      file_seek (existing_spt_page->file, existing_spt_page->file_offset);
+      off_t read_bytes = file_read (existing_spt_page->file, new_fte->frame, existing_spt_page->file_bytes);
+      if(read_bytes != (off_t)existing_spt_page->file_bytes)
+        goto real_page_fault;
+      memset (new_fte->frame + read_bytes, 0, PGSIZE - existing_spt_page->file_bytes);
+
+      existing_spt_page->status == FRAME;
     }
     if(load_success){
       return;
