@@ -284,6 +284,15 @@ process_exit (void)
     file_close(f->file);
     palloc_free_page(f);
   }
+#ifdef VM
+    /* close mmap files */
+  while (!list_empty(&cur->mmap_descriptor_list)) {
+    struct list_elem *e = list_pop_front (&cur->mmap_descriptor_list);
+    struct file_descriptor *m = list_entry (e, struct mmap_descriptor, elem);
+    munmap(m);
+  }
+#endif
+
   /* close files */
   if(cur->owner_file){
     file_allow_write(cur->owner_file);
