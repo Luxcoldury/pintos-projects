@@ -479,7 +479,7 @@ init_thread (struct thread *t, const char *name, int priority)
   // sema_init(&t->being_waited_by_father_sema,0);
   #endif /* for proj2 */
 
-  #ifndef VM
+  #ifdef VM
   /* Owned by `vm/page.c`. */
   list_init (&t->mmap_descriptor_list);
   #endif/* for proj3 */

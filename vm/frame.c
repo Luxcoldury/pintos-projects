@@ -34,7 +34,10 @@ ft_evict_frame(void)
 
 	/* temporily choose the first one */
 	struct list_elem *e = list_begin (&frame_table);
-    struct frame_table_entry *evict_frame = list_entry (e, struct frame_table_entry, ele);
+	struct frame_table_entry *evict_frame = list_entry (e, struct frame_table_entry, ele);
+    while (evict_frame->do_not_swap){
+		e = list_next(e);
+	}
 
 	swap_eviction(evict_frame);
 	return evict_frame;
@@ -68,6 +71,7 @@ ft_get_frame (struct sup_page_table_entry* page)
 	fte->frame = ft_vaddr;
 	fte->owner = thread_current();
 	fte->page = page;
+	fte->do_not_swap = false;
 	list_push_back(&frame_table, &fte->ele);
 
 	lock_release(&ft_lock);

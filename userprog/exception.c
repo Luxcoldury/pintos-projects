@@ -13,6 +13,7 @@
   #include "vm/swap.h"
   #include "vm/frame.h"
   #include "vm/page.h"
+  #include "filesys/file.h"     // syscall
 // #endif
 
 #define MAX_STACK_SIZE 0x800000
@@ -161,6 +162,7 @@ page_fault (struct intr_frame *f)
   // write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
+#ifdef VM
   /* Project 3: deal with page faults. */
   // bad ptr*4: NULL, kernel, write to read-only, no data -> exit(-1)
   /* deal with the former three cases*/
@@ -180,8 +182,8 @@ page_fault (struct intr_frame *f)
 
   /* if in spt: if has data, load data */
   if(existing_spt_page!=NULL){
+    /* if no frame: allocate frame and load data */
     if(spt_reallocate_frame_and_load(existing_spt_page)){
-      /* load successfully */
       return;
     }
     goto real_page_fault;
@@ -199,6 +201,7 @@ page_fault (struct intr_frame *f)
     return;
 
   real_page_fault:
+#endif
 
   // 如果kernel下的pf出问题，可能会用到下面代码
   // /* (3.1.5) a page fault in the kernel merely sets eax to 0xffffffff

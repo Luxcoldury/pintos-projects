@@ -13,6 +13,7 @@ struct frame_table_entry {
 	uint32_t* frame;  				/* ptr to page that currently occupies it */
 	struct thread* owner;			/* the thread who owns it */
 	struct sup_page_table_entry* page;	/* ptr to supplemental page entry */
+	bool do_not_swap;
 // Maybe store information for memory mapped files here too?
 };
 
