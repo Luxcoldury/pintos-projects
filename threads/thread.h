@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "synch.h"
+#include "lib/kernel/hash.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -106,6 +107,7 @@ struct thread
     struct process_control_block* pcb;
     struct file* owner_file;
 #endif
+
 #ifdef VM
     /* owned by vm/page.c */
     struct hash spt_hash_table;			  /* hashtable */

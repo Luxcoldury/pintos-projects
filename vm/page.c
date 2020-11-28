@@ -1,23 +1,28 @@
 #include "page.h"
 #include "threads/thread.h"
 #include "frame.h"
+#include "swap.h"				/* for clear */
+#include "lib/kernel/hash.h"	/* for hash */
+#include "threads/malloc.h"
+#include "userprog/process.h"	/* install_page */
+#include "filesys/file.h"     // syscall
 
 
 /* Returns a hash value for page p. */
 unsigned
 spt_hash (const struct hash_elem *p_, void *aux UNUSED)
 {
-const struct sup_page_table_entry *p = hash_entry (p_, struct sup_page_table_entry, hash_elem);
+const struct sup_page_table_entry *p = hash_entry (p_, struct sup_page_table_entry, hash_ele);
 return hash_bytes (&p->user_vaddr, sizeof(p->user_vaddr));
 }
 
 
 /* Returns true if page a precedes page b. */
 bool
-spt_hash_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED)
+spt_hash_less (const struct hash_elem*a_, const struct hash_elem*b_, void *aux UNUSED)
 {
-const struct sup_page_table_entry *a = hash_entry (a_, struct sup_page_table_entry, hash_elem);
-const struct sup_page_table_entry *b = hash_entry (b_, struct sup_page_table_entry, hash_elem);
+const struct sup_page_table_entry *a = hash_entry (a_, struct sup_page_table_entry, hash_ele);
+const struct sup_page_table_entry *b = hash_entry (b_, struct sup_page_table_entry, hash_ele);
 return a->user_vaddr < b->user_vaddr;
 }
 
@@ -28,8 +33,8 @@ struct sup_page_table_entry *
 spt_hash_lookup (const void *address)
 {
 	struct sup_page_table_entry p;
-	struct hash_elem *e;
-	p.user_vaddr = address;
+	struct hash_elem* e;
+	p.user_vaddr = (uint32_t*) address;
 	e = hash_find (&thread_current ()->spt_hash_table, &p.hash_ele);
 	return e != NULL ? hash_entry (e, struct sup_page_table_entry, hash_ele) : NULL;
 }
@@ -37,7 +42,7 @@ spt_hash_lookup (const void *address)
 
 /* init a spt entry with known info */
 struct sup_page_table_entry* 
-spt_init_page (uint32_t vaddr, bool isDirty, bool isAccessed)
+spt_init_page (uint32_t* vaddr)
 {
 	struct sup_page_table_entry* page = malloc (sizeof(struct sup_page_table_entry));
 	if(page == NULL){
@@ -45,54 +50,67 @@ spt_init_page (uint32_t vaddr, bool isDirty, bool isAccessed)
 		return NULL;
 	}
 	page->user_vaddr = vaddr;
-	page->dirty = isDirty;
-	page->accessed = isAccessed;
+	lock_init (&page->spt_lock);
 	return page;
 }
 
 
-/* create a new page and push into hashtable */
+/* create a new page, push into hashtable, and install it. */
 struct sup_page_table_entry* 
-spt_create_page (uint32_t vaddr)
+spt_create_page (uint32_t* vaddr)
 {
-	struct sup_page_table_entry* newPage = spt_init_page(vaddr, false, false);
+	struct sup_page_table_entry* newPage = spt_init_page(vaddr);
 	/* if page allocation failed */
 	if(newPage == NULL){
 		return NULL;
 	}
 
-	/* if vaddr accessed */
+	// insert page into hash table
 	if(hash_insert(&thread_current()->spt_hash_table, &newPage->hash_ele)!=NULL){
 		free(newPage);
 		return NULL;
 	}
 
 	/* if success, get a frame for it */
-	struct frame_table_entry frame = ft_get_frame(PAL_USER, newPage);
+	struct frame_table_entry* frame = ft_get_frame(newPage);
+	if(frame == NULL){
+		free(newPage);
+		return NULL;
+	}
+
+	/* install page and frame */
 	newPage->frame = frame;
-	install_page(vaddr, frame->user_vaddr, true);
+	newPage->status = FRAME;
+    newPage->file=NULL;
+	newPage->file_offset=0;
+	newPage->file_bytes=0;
+	newPage->writable=true;
+	if(!install_page(vaddr, frame->frame, true)){
+		spt_free_page(newPage);
+		return NULL;
+	}
 	
 	return newPage;
 }
 
 
 struct sup_page_table_entry* 
-spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable)
+spt_create_file_mmap_page (uint32_t* vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable)
 {
-	struct sup_page_table_entry* newPage = spt_init_page(vaddr, false, false);
+	struct sup_page_table_entry* newPage = spt_init_page(vaddr);
 	/* if page allocation failed */
 	if(newPage == NULL){
 		return NULL;
 	}
 
-	/* if vaddr accessed */
+	// insert page into hash table
 	if(hash_insert(&thread_current()->spt_hash_table, &newPage->hash_ele)!=NULL){
 		free(newPage);
 		return NULL;
 	}
 
 	/* if success, map a file for it */
-	newPage->type = FILE;
+	newPage->status = FILE;
 	newPage->frame = NULL;
 	newPage->file = file;
 	newPage->file_offset = offset;
@@ -102,24 +120,79 @@ spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, ui
 	return newPage;
 }
 
+void *
+spt_free_file_mmap_page(uint32_t* vaddr)
+{
+	struct sup_page_table_entry* page = spt_hash_lookup(vaddr);
+	if(page == NULL || page->file)
+		return NULL;
+
+	struct frame_table_entry* frame = page->frame;
+    struct file* f = page->file;
+
+	switch (page->status) {
+        case FRAME:
+            lock_acquire(&ft_lock);
+            frame->do_not_swap = true;
+            lock_release(&ft_lock);
+
+            uint32_t* pagedir = thread_current()->pagedir;
+            if(pagedir_is_dirty(pagedir, page->user_vaddr) || pagedir_is_dirty(pagedir, page->frame->frame)) {
+                file_write_at (page->file, page->user_vaddr, page->file_bytes, page->file_offset);
+            }
+            break;
+
+        case SWAP:
+            swap_reclamation(page->frame,page);
+            file_write_at (page->file, page->user_vaddr, page->file_bytes, page->file_offset);
+            break;
+	}
+
+    ft_free_frame (page->frame);
+	hash_delete(&thread_current()->spt_hash_table, &page->hash_ele);
+	free(page);
+    return true;
+}
+
+
+
 /* free resource of the page at address `vaddr` 
    and remove it from hash table 
  */
-void* 
-spt_free_page (uint32_t vaddr)
+void
+spt_free_page (struct sup_page_table_entry* page)
 {
-	struct sup_page_table_entry* page =  spt_hash_lookup(vaddr);
-	if(page == NULL){
-		return NULL;
+	/* for swap if on disk */
+	if(page->status == SWAP){
+		swap_free_pagesized_blocks(page->swap_id);
 	}
-
-	// free a mmap file page
-	if(file){
-		unmap();
-		return;
+	if(page->status == FRAME){
+		ft_free_frame(page->frame);
 	}
-
-	ft_free_frame(page->frame);
+    if(page->status == FILE){
+		spt_free_file_mmap_page(page->frame);
+        return;
+	}
 	hash_delete(&thread_current()->spt_hash_table, &page->hash_ele);
 	free(page);
 }
+
+
+/* destructor function  for `spt_destroy_hash` */
+static void
+spt_hash_destructor(struct hash_elem*e, void *aux UNUSED)
+{
+  /* clean the spte related resources  */
+  struct sup_page_table_entry *page = hash_entry (e, struct sup_page_table_entry, hash_ele);
+
+  /* free the spte */
+  spt_free_page(page);
+}
+
+
+/* destroy the spt hash table of the given thread */
+void spt_destroy_hash(struct thread* t)
+{
+	hash_destroy(&t->spt_hash_table, spt_hash_destructor);
+}
+

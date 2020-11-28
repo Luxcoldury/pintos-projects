@@ -7,55 +7,52 @@
 	`thread.sup_page_table` 
  */
 #include <stdbool.h>			/* for bool */
+#include <stddef.h>				/* for size_t */
 #include "lib/debug.h"			/* for unused var */
-#include "lib/kernel/hash.h"
+#include "lib/kernel/hash.h"	/* for hash */
+#include "threads/synch.h"		/* for lock */
+#include "hash.h"
 
-
-/* spt entry with information about page */
-struct sup_page_table_entry {
-	page_status status;
-
-	/* for hash */
-	struct hash_elem hash_ele;		/* hash element */
-	uint32_t* user_vaddr;			/* virtual address, as a key in hash table */
-	struct lock spt_lock;			/* lock to provide page operation e.g. hash */
-
-	/* for LRU evict in frame */
-	uint64_t access_time;
-// You can use the provided PTE functions instead. I’ve posted links to
-// the documentation below, dirty and accessed暂时没有用到
-	bool dirty=false;					/* if modified */
-	bool accessed=false;				/* if accessed */ 
-
-	/* information for swap */
-	struct frame_table_entry* frame;	/* frame */
-
-	// for FILE mmap
-	sturct file *file=NULL;
-	size_t file_offset;
-	size_t file_bytes;
-	bool writable;
-
-};
-
-enum page_status{
+/* where the data of a page in */
+enum page_type{
 	FRAME,
 	SWAP,
 	FILE
 };
 
+/* spt entry with information about page */
+struct sup_page_table_entry {
+	/* for hash */
+	struct hash_elem hash_ele;		/* hash element */
+	uint32_t* user_vaddr;			/* virtual address, as a key in hash table */
+	struct lock spt_lock;			/* lock to provide page operation e.g. hash */
+
+	/* information for swap */
+	enum page_type status;				/* where the data are in */
+	struct frame_table_entry* frame;	/* frame */
+	size_t swap_id;						/* swap index in bitmap table */
+
+	// for FILE mmap
+	struct file *file;
+	size_t file_offset;
+	size_t file_bytes;
+	bool writable;
+};
+
+
 // for spt operations
-struct sup_page_table_entry*  spt_init_page (uint32_t vaddr, bool isDirty, bool isAccessed);
-void* spt_create_page (uint32_t vaddr);
-void* spt_free_page (uint32_t vaddr);
+struct sup_page_table_entry*  spt_init_page (uint32_t* vaddr);
+struct sup_page_table_entry*  spt_create_page (uint32_t* vaddr);
+void spt_free_page (struct sup_page_table_entry* page);
 
 struct sup_page_table_entry *spt_hash_lookup (const void *address);
 
-struct sup_page_table_entry *spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable);
+struct sup_page_table_entry *spt_create_file_mmap_page (uint32_t* vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable);
+void* spt_free_file_mmap_page(uint32_t* vaddr);
 
 // for hash uses (included for init_thread )
 unsigned spt_hash (const struct hash_elem *p_, void *aux UNUSED);
 bool spt_hash_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
-
+void spt_destroy_hash(struct thread* t);
 
 #endif  /* vm/ page.h */

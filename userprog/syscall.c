@@ -17,23 +17,25 @@
 
 #define SYS_CALL_NUM_MIN 0
 
-#ifdef USERPROG
-  #define SYS_CALL_NUM_MAX 12
-#endif
-
-// #ifdef VM
+#ifdef VM
   #include "vm/swap.h"
   #include "vm/frame.h"
   #include "vm/page.h"
   #define SYS_CALL_NUM_MAX 14
-// #endif
+#elif USERPROG
+  #define SYS_CALL_NUM_MAX 12
+#endif
+
 
 static void syscall_handler(struct intr_frame *);
 
 struct lock filesys_lock;
 
+/* helper functions at the bottom. */
 struct file_descriptor*
 find_file_descriptor_by_fd(int fd);
+struct mmap_descriptor*
+find_mmap_descriptor_by_md(mapid_t md);
 
 void syscall_init(void)
 {
@@ -55,7 +57,7 @@ syscall_handler(struct intr_frame *f UNUSED)
   ASSERT(sysCallNum >= SYS_CALL_NUM_MIN && sysCallNum <= SYS_CALL_NUM_MAX);
 
   #ifdef VM
-  thread_current()->kernel_esp_temp = sp;
+  thread_current()->kernel_esp_temp = (uint8_t*)sp;
   #endif
 
   // `sysCallNum`is stored in stack pointer(f.esp)
@@ -155,14 +157,15 @@ syscall_handler(struct intr_frame *f UNUSED)
     if(!check_pointers(sp+1, 2) || !is_user_vaddr (sp+1) || !is_user_vaddr (sp+2)){
       exit(-1);
     }
-    f->eax = mmap(*(sp + 1), *(sp + 2));
+    f->eax = mmap(*(sp + 1), (void*)*(sp + 2));
     break;
 
   case SYS_MUNMAP:
     if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
       exit(-1);
     }
-    munmap(*(sp + 1));
+    exit(-1);
+    // munmap(*(sp + 1));
     break;
 
   }
@@ -429,6 +432,7 @@ mapid_t mmap(int fd, void *addr){
   // stdin,stdout,指针无效,指针非page
   if (fd < 2 || addr == NULL || pg_ofs(addr) != 0) return MAP_FAILED;
   struct thread *cur = thread_current();
+  // printf('%p',cur->spt_hash_table);
 
   lock_acquire (&filesys_lock);
 
@@ -477,6 +481,28 @@ mapid_t mmap(int fd, void *addr){
   lock_release (&filesys_lock);
   return MAP_FAILED;
 }
+
+void munmap(mapid_t md){
+  struct mmap_descriptor *m = find_mmap_descriptor_by_md(md);
+
+  if(m == NULL) {
+    return;
+  }
+
+  lock_acquire (&filesys_lock);
+
+  size_t f_size = m->size;
+  for(size_t i = 0; i < f_size; i += PGSIZE) {
+    spt_free_file_mmap_page(m->addr + i);
+  }
+
+  file_close(m->file);
+  list_remove(&m->elem);
+  free(m);
+
+  lock_release (&filesys_lock);
+}
+
 /********************** helper functions ***************************************/
 
 /* as the name, return f with a valid file*
@@ -488,7 +514,7 @@ find_file_descriptor_by_fd(int fd){
     return NULL;
 
   struct list* l = &thread_current()->file_descriptor_list;
-  if(list_empty(&l)) 
+  if(list_empty(l)) 
     return NULL;
 
   // printf ("\nsize: %d\n",list_size(&l));
@@ -506,7 +532,7 @@ find_file_descriptor_by_fd(int fd){
 struct mmap_descriptor*
 find_mmap_descriptor_by_md(mapid_t md){
   struct list* l = &thread_current()->mmap_descriptor_list;
-  if(list_empty(&l)) 
+  if(list_empty(l)) 
     return NULL;
 
   // printf ("\nsize: %d\n",list_size(&l));

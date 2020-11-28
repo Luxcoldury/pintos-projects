@@ -13,6 +13,7 @@
   #include "vm/swap.h"
   #include "vm/frame.h"
   #include "vm/page.h"
+  #include "filesys/file.h"     // syscall
 // #endif
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -157,37 +158,63 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-// #ifdef VM
-
-  // write to read-only, kill
-  if (!not_present) {
+#ifdef VM
+  /* Project 3: deal with page faults. */
+  // bad ptr*4: NULL, kernel, write to read-only, no data -> exit(-1)
+  /* deal with the former three cases*/
+  if (fault_addr == NULL ||is_kernel_vaddr(fault_addr) || !not_present) {
     goto real_page_fault;
   }
 
-  // 
+  /* get stack pointer(user or kernel). */
   void* esp = user ? f->esp : thread_current()->kernel_esp_temp;
 
-  // whether in spt
+  /* whether in spt */
   struct sup_page_table_entry *existing_spt_page = spt_hash_lookup(fault_addr);
+
+  /* if in spt: if has data, load data */
   if(existing_spt_page!=NULL){
-    // already in spt
-    swap_reclamation(); load_page();
-    return;
+    bool load_success = false;
+
+    /* if no frame: allocate frame and load data */
+    if(existing_spt_page->status == SWAP){
+      struct frame_table_entry* new_fte = ft_get_frame(existing_spt_page);
+      if (new_fte!=NULL){
+        swap_reclamation(new_fte, existing_spt_page);
+        load_success = true;
+      }
+    }else if(existing_spt_page->status == FILE){
+      struct frame_table_entry* new_fte = ft_get_frame(existing_spt_page);
+      if(new_fte==NULL || existing_spt_page->file==NULL)
+        goto real_page_fault;
+
+      file_seek (existing_spt_page->file, existing_spt_page->file_offset);
+      off_t read_bytes = file_read (existing_spt_page->file, new_fte->frame, existing_spt_page->file_bytes);
+      if(read_bytes != (off_t)existing_spt_page->file_bytes)
+        goto real_page_fault;
+      memset (new_fte->frame + read_bytes, 0, PGSIZE - existing_spt_page->file_bytes);
+
+      existing_spt_page->status == FRAME;
+    }
+    if(load_success){
+      return;
+    }
+    goto real_page_fault;
   }
 
-  // not in spt. either sp or "real page fault"
-  if(fault_addr == NULL || is_kernel_vaddr(fault_addr) || fault_addr < 0x08048000 || (fault_addr != esp-32 && fault_addr != esp-4))
+  /* if not in spt: either sp or `real page fault` */
+  if( (int)fault_addr < 0x08048000 || (fault_addr != esp-32 && fault_addr != esp-4))
     goto real_page_fault;
 
-  // legal sp, grow stach
-  void* upage = pg_round_down(fault_addr);
-  struct sup_page_table_entry* newPage = spt_create_page(upage)
+  /* legal sp, grow stack */
+  uint32_t* upage = pg_round_down(fault_addr);
+  struct sup_page_table_entry* newPage = spt_create_page(upage);
   
   if (newPage != NULL)
     return;
 
   real_page_fault:
-// #endif
+#endif
 
   // 如果kernel下的pf出问题，可能会用到下面代码
   // /* (3.1.5) a page fault in the kernel merely sets eax to 0xffffffff
@@ -201,6 +228,8 @@ page_fault (struct intr_frame *f)
  /* If in the page fault handler you decide this address is actually not invalid and
 the process can proceed, make sure you do not run the last two lines */
   exit(-1);
+  /* bellow will never be executed. */
+
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */

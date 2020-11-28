@@ -1,22 +1,16 @@
 #ifndef VM_SWAP_H
 #define VM_SWAP_H
-/* swap slot in block.h */
+/* swap slots/ blocks in global_swap_block */
 #include "devices/block.h"
 #include "lib/kernel/bitmap.h"
 #include "frame.h"
-
-//Make the swap block global
-static struct block* global_swap_block;
-//Get the block device when we initialize our swap code
-void swap_init()
-{
-global_swap_block = block_get_role(BLOCK_SWAP);
-}
+#include "threads/vaddr.h"
 
 
 /* swap operations */
-void swap_eviction();
-void swap_reclamation();
-
+void swap_init(void);
+void swap_eviction(struct frame_table_entry* fte);
+void swap_reclamation(struct frame_table_entry* fte, struct sup_page_table_entry* spte);
+void swap_free_pagesized_blocks(size_t swap_index);
 
 #endif/* vm/ swap.h */
