@@ -157,6 +157,7 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
+#ifdef VM
   /* Project 3: deal with page faults. */
   // bad ptr*4: NULL, kernel, write to read-only, no data -> exit(-1)
   /* deal with the former three cases*/
@@ -200,6 +201,7 @@ page_fault (struct intr_frame *f)
     return;
 
   real_page_fault:
+#endif
 
   // 如果kernel下的pf出问题，可能会用到下面代码
   // /* (3.1.5) a page fault in the kernel merely sets eax to 0xffffffff

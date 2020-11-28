@@ -480,6 +480,28 @@ mapid_t mmap(int fd, void *addr){
   lock_release (&filesys_lock);
   return MAP_FAILED;
 }
+
+void munmap(mmapid_t md){
+  struct mmap_descriptor *m = find_mmap_descriptor_by_md(md);
+
+  if(m == NULL) {
+    return;
+  }
+
+  lock_acquire (&filesys_lock);
+
+  size_t f_size = m->size;
+  for(size_t i = 0; i < f_size; i += PGSIZE) {
+    spt_free_file_mmap_page(addr, f, i, file_bytes, true);
+  }
+
+  file_close(m->file);
+  list_remove(&m->elem);
+  free(m);
+
+  lock_release (&filesys_lock);
+}
+
 /********************** helper functions ***************************************/
 
 /* as the name, return f with a valid file*

@@ -115,6 +115,78 @@ spt_create_file_mmap_page (uint32_t* vaddr, struct file * file, size_t offset, u
 	return newPage;
 }
 
+void *
+spt_free_file_mmap_page(uint32_t vaddr)
+{
+	struct sup_page_table_entry* page =  spt_hash_lookup(vaddr);
+	if(page == NULL || page->file)
+		return NULL;
+
+	if(page)
+	
+  // Pin the associated frame if loaded
+  // otherwise, a page fault could occur while swapping in (reading the swap disk)
+  if (spte->status == ON_FRAME) {
+    ASSERT (spte->kpage != NULL);
+    vm_frame_pin (spte->kpage);
+  }
+
+
+  // see also, vm_load_page()
+  switch (spte->status)
+  {
+  case ON_FRAME:
+    ASSERT (spte->kpage != NULL);
+
+    // Dirty frame handling (write into file)
+    // Check if the upage or mapped frame is dirty. If so, write to file.
+    bool is_dirty = spte->dirty;
+    is_dirty = is_dirty || pagedir_is_dirty(pagedir, spte->upage);
+    is_dirty = is_dirty || pagedir_is_dirty(pagedir, spte->kpage);
+    if(is_dirty) {
+      file_write_at (f, spte->upage, bytes, offset);
+    }
+
+    // clear the page mapping, and release the frame
+    vm_frame_free (spte->kpage);
+    pagedir_clear_page (pagedir, spte->upage);
+    break;
+
+  case ON_SWAP:
+    {
+      bool is_dirty = spte->dirty;
+      is_dirty = is_dirty || pagedir_is_dirty(pagedir, spte->upage);
+      if (is_dirty) {
+        // load from swap, and write back to file
+        void *tmp_page = palloc_get_page(0); // in the kernel
+        vm_swap_in (spte->swap_index, tmp_page);
+        file_write_at (f, tmp_page, PGSIZE, offset);
+        palloc_free_page(tmp_page);
+      }
+      else {
+        // just throw away the swap.
+        vm_swap_free (spte->swap_index);
+      }
+    }
+    break;
+
+  case FROM_FILESYS:
+    // do nothing.
+    break;
+
+  default:
+    // Impossible, such as ALL_ZERO
+    PANIC ("unreachable state");
+  }
+
+  // the supplemental page table entry is also removed.
+  // so that the unmapped memory is unreachable. Later access will fault.
+  hash_delete(& supt->page_map, &spte->elem);
+  return true;
+}
+
+
+
 /* free resource of the page at address `vaddr` 
    and remove it from hash table 
  */
