@@ -191,7 +191,7 @@ page_fault (struct intr_frame *f)
 
   /* if not in spt: either sp or `real page fault` */
   bool within_stack = (fault_addr < PHYS_BASE && fault_addr >= PHYS_BASE - MAX_STACK_SIZE);
-  bool not_sp = (fault_addr != esp-32 && fault_addr != esp-4);
+  bool not_sp = (fault_addr != esp-32 && fault_addr != esp-4 && fault_addr < esp);
   if( !within_stack || not_sp )
     goto real_page_fault;
 
