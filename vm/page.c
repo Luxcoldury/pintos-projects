@@ -11,29 +11,31 @@
 unsigned
 spt_hash (const struct hash_elem *p_, void *aux UNUSED)
 {
-const struct sup_page_table_entry *p = hash_entry (p_, struct sup_page_table_entry, hash_ele);
-return hash_bytes (&p->user_vaddr, sizeof(p->user_vaddr));
+	const struct sup_page_table_entry *p = hash_entry (p_, struct sup_page_table_entry, hash_ele);
+	return hash_bytes (&p->user_vaddr, sizeof(p->user_vaddr));
 }
 
 
 /* Returns true if page a precedes page b. */
 bool
-spt_hash_less (const struct hash_elem*a_, const struct hash_elem*b_, void *aux UNUSED)
+spt_hash_less (const struct hash_elem* a_, const struct hash_elem* b_, void *aux UNUSED)
 {
-const struct sup_page_table_entry *a = hash_entry (a_, struct sup_page_table_entry, hash_ele);
-const struct sup_page_table_entry *b = hash_entry (b_, struct sup_page_table_entry, hash_ele);
-return a->user_vaddr < b->user_vaddr;
+	const struct sup_page_table_entry *a = hash_entry (a_, struct sup_page_table_entry, hash_ele);
+	const struct sup_page_table_entry *b = hash_entry (b_, struct sup_page_table_entry, hash_ele);
+	return a->user_vaddr < b->user_vaddr;
 }
 
 
 /* Returns the page containing the given virtual address,
-   or a null pointer if no such page exists in the current thread's pages. */
+   or a null pointer 
+   if no such page exists in the current thread's pages. */
 struct sup_page_table_entry *
 spt_hash_lookup (const void *address)
 {
 	struct sup_page_table_entry p;
 	struct hash_elem* e;
 	p.user_vaddr = (uint32_t*) address;
+	
 	e = hash_find (&thread_current ()->spt_hash_table, &p.hash_ele);
 	return e != NULL ? hash_entry (e, struct sup_page_table_entry, hash_ele) : NULL;
 }
@@ -89,8 +91,40 @@ spt_create_page (uint32_t* vaddr)
 }
 
 
+/* reallocate a frame and load the data on swap to the new frame.
+   return false if failed. */
+bool
+spt_reallocate_frame_and_load(struct sup_page_table_entry* page)
+{
+	ASSERT(page->status != FRAME);
+	/* get a frame for it */
+	struct frame_table_entry* frame = ft_get_frame(page);
+	if(frame == NULL){
+		return false;
+	}
+
+	/* if seccess, install page and frame */
+	page->frame = frame;
+	page->status = FRAME;
+	if(!install_page(page->user_vaddr, frame->frame, page->writable)){
+		spt_free_page(page);
+		return false;
+	}
+
+	/* load data to frame */
+	
+	/* if no frame: allocate frame and load data */
+    if(page->status == SWAP){
+        swap_reclamation(frame, page);
+    }
+
+	/* success */
+	return true;
+}
+
+
 struct sup_page_table_entry* 
-spt_create_file_mmap_page (uint32_t* vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable)
+spt_create_file_mmap_page (uint32_t* vaddr, struct file * file, off_t offset, uint32_t file_bytes, bool writable)
 {
 	struct sup_page_table_entry* newPage = spt_init_page(vaddr);
 	/* if page allocation failed */

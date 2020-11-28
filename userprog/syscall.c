@@ -6,17 +6,16 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/malloc.h"
-#include "devices/shutdown.h" // for shutdown_power_off
-#include "filesys/file.h"     // syscall
-#include "filesys/filesys.h"  // syscall
-#include "lib/kernel/list.h"  // for fd list 
+#include "devices/shutdown.h"   // for shutdown_power_off
+#include "filesys/file.h"       // syscall
+#include "filesys/filesys.h"    // syscall
+#include "lib/kernel/list.h"    // for fd list 
 #include "userprog/process.h"
 #include "devices/input.h"
-#include "threads/vaddr.h"  // for is_kernel_vaddr() to check ptr
+#include "threads/vaddr.h"      // for is_kernel_vaddr() to check ptr
 
-
+/* for syscall in P2, P3 */
 #define SYS_CALL_NUM_MIN 0
-
 #ifdef VM
   #include "vm/swap.h"
   #include "vm/frame.h"

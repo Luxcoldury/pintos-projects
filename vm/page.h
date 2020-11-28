@@ -11,6 +11,7 @@
 #include "lib/debug.h"			/* for unused var */
 #include "lib/kernel/hash.h"	/* for hash */
 #include "threads/synch.h"		/* for lock */
+#include "filesys/off_t.h"		/* for off_t */
 
 /* where the data of a page in */
 enum page_type{
@@ -33,7 +34,7 @@ struct sup_page_table_entry {
 
 	// for FILE mmap
 	struct file *file;
-	size_t file_offset;
+	off_t file_offset;
 	size_t file_bytes;
 	bool writable;
 };
@@ -43,14 +44,15 @@ struct sup_page_table_entry {
 struct sup_page_table_entry*  spt_init_page (uint32_t* vaddr);
 struct sup_page_table_entry*  spt_create_page (uint32_t* vaddr);
 void spt_free_page (struct sup_page_table_entry* page);
+bool spt_reallocate_frame_and_load(struct sup_page_table_entry* page);
 
-struct sup_page_table_entry *spt_hash_lookup (const void *address);
-
-struct sup_page_table_entry *spt_create_file_mmap_page (uint32_t* vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable);
+// for file operations
+struct sup_page_table_entry *spt_create_file_mmap_page (uint32_t* vaddr, struct file * file, off_t offset, uint32_t file_bytes, bool writable);
 
 // for hash uses (included for init_thread )
 unsigned spt_hash (const struct hash_elem *p_, void *aux UNUSED);
 bool spt_hash_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
 void spt_destroy_hash(struct thread* t);
+struct sup_page_table_entry *spt_hash_lookup (const void *address);
 
 #endif  /* vm/ page.h */
