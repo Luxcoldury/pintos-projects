@@ -7,7 +7,7 @@
 
 /* init frame table */
 void
-ft_init()
+ft_init(void)
 {
 	list_init(&frame_table);
 	lock_init(&ft_lock);
@@ -16,7 +16,7 @@ ft_init()
 
 /* evict a frame and one is available, NOT FINISHED!!! */
 static struct frame_table_entry*
-ft_evict_frame()
+ft_evict_frame(void)
 {
 	// /* evict to swap/ mmap */
 	// if(page->dirty){
@@ -41,7 +41,8 @@ ft_evict_frame()
 }
 
 
-/* falloc a new frame from a page and append as a ft list entry */
+/* falloc a new frame from a page and append as a ft list entry 
+   return NULL if failed. */
 struct frame_table_entry *
 ft_get_frame (struct sup_page_table_entry* page)
 {
@@ -66,6 +67,7 @@ ft_get_frame (struct sup_page_table_entry* page)
 	fte->owner = thread_current();
 	fte->page = page;
 	list_push_back(&frame_table, &fte->ele);
+
 	return fte;
 }
 

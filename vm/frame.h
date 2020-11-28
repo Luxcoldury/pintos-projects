@@ -17,7 +17,7 @@ struct frame_table_entry {
 };
 
 
-void ft_init();
+void ft_init(void);
 struct frame_table_entry* ft_get_frame (struct sup_page_table_entry* page);
 void ft_free_frame (struct frame_table_entry* fte);
 

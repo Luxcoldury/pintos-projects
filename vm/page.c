@@ -1,7 +1,10 @@
 #include "page.h"
 #include "threads/thread.h"
 #include "frame.h"
+#include "swap.h"				/* for clear */
 #include "lib/kernel/hash.h"	/* for hash */
+#include "threads/malloc.h"
+#include "userprog/process.h"	/* install_page */
 
 
 /* Returns a hash value for page p. */
@@ -29,8 +32,8 @@ struct sup_page_table_entry *
 spt_hash_lookup (const void *address)
 {
 	struct sup_page_table_entry p;
-	struct hash_elem*e;
-	p.user_vaddr = address;
+	struct hash_elem* e;
+	p.user_vaddr = (uint32_t*) address;
 	e = hash_find (&thread_current ()->spt_hash_table, &p.hash_ele);
 	return e != NULL ? hash_entry (e, struct sup_page_table_entry, hash_ele) : NULL;
 }
@@ -38,7 +41,7 @@ spt_hash_lookup (const void *address)
 
 /* init a spt entry with known info */
 struct sup_page_table_entry* 
-spt_init_page (uint32_t vaddr)
+spt_init_page (uint32_t* vaddr)
 {
 	struct sup_page_table_entry* page = malloc (sizeof(struct sup_page_table_entry));
 	if(page == NULL){
@@ -51,9 +54,9 @@ spt_init_page (uint32_t vaddr)
 }
 
 
-/* create a new page and push into hashtable */
+/* create a new page, push into hashtable, and install it. */
 struct sup_page_table_entry* 
-spt_create_page (uint32_t vaddr)
+spt_create_page (uint32_t* vaddr)
 {
 	struct sup_page_table_entry* newPage = spt_init_page(vaddr);
 	/* if page allocation failed */
@@ -69,15 +72,25 @@ spt_create_page (uint32_t vaddr)
 
 	/* if success, get a frame for it */
 	struct frame_table_entry* frame = ft_get_frame(newPage);
+	if(frame == NULL){
+		free(newPage);
+		return NULL;
+	}
+
+	/* install page and frame */
 	newPage->frame = frame;
-	install_page(vaddr, frame->frame, true);
+	newPage->status = FRAME;
+	if(!install_page(vaddr, frame->frame, true)){
+		spt_free_page(newPage);
+		return NULL;
+	}
 	
 	return newPage;
 }
 
 
 struct sup_page_table_entry* 
-spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable)
+spt_create_file_mmap_page (uint32_t* vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable)
 {
 	struct sup_page_table_entry* newPage = spt_init_page(vaddr);
 	/* if page allocation failed */
@@ -105,14 +118,14 @@ spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, ui
 /* free resource of the page at address `vaddr` 
    and remove it from hash table 
  */
-void* 
+void
 spt_free_page (struct sup_page_table_entry* page)
 {
 	/* for mmap */
 	// free a mmap file page
 	if(page->file){
 		// unmap();
-		return;
+		return ;
 	}
 
 	/* for swap if on disk */

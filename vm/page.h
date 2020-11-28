@@ -40,13 +40,13 @@ struct sup_page_table_entry {
 
 
 // for spt operations
-struct sup_page_table_entry*  spt_init_page (uint32_t vaddr);
-struct sup_page_table_entry*  spt_create_page (uint32_t vaddr);
-void* spt_free_page (struct sup_page_table_entry* page);
+struct sup_page_table_entry*  spt_init_page (uint32_t* vaddr);
+struct sup_page_table_entry*  spt_create_page (uint32_t* vaddr);
+void spt_free_page (struct sup_page_table_entry* page);
 
 struct sup_page_table_entry *spt_hash_lookup (const void *address);
 
-struct sup_page_table_entry *spt_create_file_mmap_page (uint32_t vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable);
+struct sup_page_table_entry *spt_create_file_mmap_page (uint32_t* vaddr, struct file * file, size_t offset, uint32_t file_bytes, bool writable);
 
 // for hash uses (included for init_thread )
 unsigned spt_hash (const struct hash_elem *p_, void *aux UNUSED);

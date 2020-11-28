@@ -17,23 +17,25 @@
 
 #define SYS_CALL_NUM_MIN 0
 
-#ifdef USERPROG
-  #define SYS_CALL_NUM_MAX 12
-#endif
-
-// #ifdef VM
+#ifdef VM
   #include "vm/swap.h"
   #include "vm/frame.h"
   #include "vm/page.h"
   #define SYS_CALL_NUM_MAX 14
-// #endif
+#elif USERPROG
+  #define SYS_CALL_NUM_MAX 12
+#endif
+
 
 static void syscall_handler(struct intr_frame *);
 
 struct lock filesys_lock;
 
+/* helper functions at the bottom. */
 struct file_descriptor*
 find_file_descriptor_by_fd(int fd);
+struct mmap_descriptor*
+find_mmap_descriptor_by_md(mapid_t md);
 
 void syscall_init(void)
 {
@@ -55,7 +57,7 @@ syscall_handler(struct intr_frame *f UNUSED)
   ASSERT(sysCallNum >= SYS_CALL_NUM_MIN && sysCallNum <= SYS_CALL_NUM_MAX);
 
   #ifdef VM
-  thread_current()->kernel_esp_temp = sp;
+  thread_current()->kernel_esp_temp = (uint8_t*)sp;
   #endif
 
   // `sysCallNum`is stored in stack pointer(f.esp)
@@ -155,13 +157,14 @@ syscall_handler(struct intr_frame *f UNUSED)
     if(!check_pointers(sp+1, 2) || !is_user_vaddr (sp+1) || !is_user_vaddr (sp+2)){
       exit(-1);
     }
-    f->eax = mmap(*(sp + 1), *(sp + 2));
+    f->eax = mmap(*(sp + 1), (void*)*(sp + 2));
     break;
 
   case SYS_MUNMAP:
     if(!check_pointer(sp+1) || !is_user_vaddr (sp+1)){
       exit(-1);
     }
+    exit(-1);
     // munmap(*(sp + 1));
     break;
 
@@ -488,7 +491,7 @@ find_file_descriptor_by_fd(int fd){
     return NULL;
 
   struct list* l = &thread_current()->file_descriptor_list;
-  if(list_empty(&l)) 
+  if(list_empty(l)) 
     return NULL;
 
   // printf ("\nsize: %d\n",list_size(&l));
@@ -506,7 +509,7 @@ find_file_descriptor_by_fd(int fd){
 struct mmap_descriptor*
 find_mmap_descriptor_by_md(mapid_t md){
   struct list* l = &thread_current()->mmap_descriptor_list;
-  if(list_empty(&l)) 
+  if(list_empty(l)) 
     return NULL;
 
   // printf ("\nsize: %d\n",list_size(&l));

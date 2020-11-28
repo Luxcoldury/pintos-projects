@@ -13,7 +13,7 @@ static struct bitmap* swap_free_map;		/* true if free for swap, otherwise false 
 
 /* Get the block device when we initialize our swap code */
 void 
-swap_init()
+swap_init(void)
 {
 	/* init the block device*/
 	swap_blocks = block_get_role(BLOCK_SWAP);
@@ -32,7 +32,7 @@ swap_init()
    find the first free block and 
    return its index in the bitmap. */
 static size_t
-first_free_block_index()
+first_free_block_index(void)
 {
 	return bitmap_scan_and_flip(swap_free_map, 0, 1, true);
 }
