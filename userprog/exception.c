@@ -4,20 +4,8 @@
 #include "userprog/gdt.h"
 #include "lib/user/syscall.h"
 #include "userprog/pagedir.h"
-#include "userprog/process.h"
 #include "threads/interrupt.h"
-#include "threads/vaddr.h"
 #include "threads/thread.h"
-#include "threads/palloc.h"
-// #ifdef VM
-  #include "vm/swap.h"
-  #include "vm/frame.h"
-  #include "vm/page.h"
-  #include "filesys/file.h"     // syscall
-// #endif
-
-#define MAX_STACK_SIZE 0x800000
-
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -137,7 +125,7 @@ static void
 page_fault (struct intr_frame *f) 
 {
   bool not_present;  /* True: not-present page, false: writing r/o page. */
-  // bool write;        /* True: access was write, false: access was read. */
+  bool write;        /* True: access was write, false: access was read. */
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
 
@@ -153,78 +141,24 @@ page_fault (struct intr_frame *f)
   /* Turn interrupts back on (they were only off so that we could
      be assured of reading CR2 before it changed). */
   intr_enable ();
+  exit(-1);
 
   /* Count page faults. */
   page_fault_cnt++;
 
   /* Determine cause. */
   not_present = (f->error_code & PF_P) == 0;
-  // write = (f->error_code & PF_W) != 0;
+  write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
-
-#ifdef VM
-  /* Project 3: deal with page faults. */
-  // bad ptr*4: NULL, kernel, write to read-only, no data -> exit(-1)
-  /* deal with the former three cases*/
-  if (fault_addr == NULL || is_kernel_vaddr(fault_addr) || !not_present) {
-    goto real_page_fault;
-  }
-
-  /* get stack pointer(user or kernel). */
-  void* esp = user ? f->esp : thread_current()->kernel_esp_temp;
-
-  /* whether in spt */
-  // printf("\nbad address: %p\n", fault_addr);
-  // printf("\naddress of hash table: %p\n", &thread_current()->spt_hash_table);
-  uint32_t* upage = (uint32_t*)pg_round_down(fault_addr);
-  
-  struct sup_page_table_entry *existing_spt_page = spt_hash_lookup(upage);
-
-  /* if in spt: if has data, load data */
-  if(existing_spt_page!=NULL){
-    /* if no frame: allocate frame and load data */
-    if(spt_reallocate_frame_and_load(existing_spt_page)){
-      return;
-    }
-    goto real_page_fault;
-  }
-
-  /* if not in spt: either sp or `real page fault` */
-  bool within_stack = (fault_addr < PHYS_BASE && fault_addr >= PHYS_BASE - MAX_STACK_SIZE);
-  bool not_sp = (fault_addr < esp-32);
-  if( !within_stack || not_sp )
-    goto real_page_fault;
-
-  /* legal sp, grow stack */
-  struct sup_page_table_entry* newPage = spt_create_page(upage);
-  if (newPage != NULL)
-    return;
-
-  real_page_fault:
-#endif
-
-  // 如果kernel下的pf出问题，可能会用到下面代码
-  // /* (3.1.5) a page fault in the kernel merely sets eax to 0xffffffff
-  //  * and copies its former value into eip. see syscall.c:get_user() */
-  // if(!user) { // kernel mode
-  //   f->eip = (void *) f->eax;
-  //   f->eax = 0xffffffff;
-  //   return;
-  // }
-
- /* If in the page fault handler you decide this address is actually not invalid and
-the process can proceed, make sure you do not run the last two lines */
-  exit(-1);
-  /* bellow will never be executed. */
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  // printf ("Page fault at %p: %s error %s page in %s context.\n",
-  //         fault_addr,
-  //         not_present ? "not present" : "rights violation",
-  //         write ? "writing" : "reading",
-  //         user ? "user" : "kernel");
-  // kill (f);
+  printf ("Page fault at %p: %s error %s page in %s context.\n",
+          fault_addr,
+          not_present ? "not present" : "rights violation",
+          write ? "writing" : "reading",
+          user ? "user" : "kernel");
+  kill (f);
 }
 

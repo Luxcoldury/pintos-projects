@@ -17,7 +17,6 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "vm/page.h" 
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -117,10 +116,6 @@ start_process (void *pcb_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   // printf("\n\n----exename:%s----\n\n",exe_name);
   // printf("\n\n----argvs:%s----\n\n",argvs);
-
-  /* for VM */
-  hash_init(&thread_current()->spt_hash_table, spt_hash, spt_hash_less, NULL); /* init hashtable */
-
 
   success = load (exe_name, &if_.eip, &if_.esp); // 传给load的只有exe本身
 
@@ -276,29 +271,18 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-  /* for USERPROG */
-  /* free the fule Descriptors */
   while (!list_empty(&cur->file_descriptor_list)) {
     struct list_elem *e = list_pop_front (&cur->file_descriptor_list);
     struct file_descriptor *f = list_entry (e, struct file_descriptor, elem);
     file_close(f->file);
     palloc_free_page(f);
   }
-#ifdef VM
-    /* close mmap files */
-  while (!list_empty(&cur->mmap_descriptor_list)) {
-    struct list_elem *e = list_pop_front (&cur->mmap_descriptor_list);
-    struct file_descriptor *m = list_entry (e, struct mmap_descriptor, elem);
-    munmap(m);
-  }
-#endif
-
-  /* close files */
+  
   if(cur->owner_file){
     file_allow_write(cur->owner_file);
     file_close (cur->owner_file);
   }
-  /* children threads */
+
   while (!list_empty(&cur->child_thread_pcb_list)) {
     struct list_elem *e = list_pop_front (&cur->child_thread_pcb_list);
     struct process_control_block *pcb;
@@ -306,7 +290,7 @@ process_exit (void)
     if (pcb->exited == true) {
       palloc_free_page (pcb);
     } else {
-      pcb->parent_dead = true;  //爸爸先死了_(:з」∠)_
+      pcb->parent_dead = true;//爸爸先死了_(:з」∠)_
       pcb->parent_thread = NULL;
     }
   }
@@ -315,15 +299,9 @@ process_exit (void)
   bool parent_dead = cur->pcb->parent_dead;
   sema_up(&cur->pcb->sema_being_waited_by_father);
 
-  /* for VM, destroy the supplemental page hashtable */
-  #ifdef VM
-    spt_destroy_hash(cur);
-  #endif /* VM */
-
   if (parent_dead)
     palloc_free_page(&cur->pcb);
-    
-  
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -546,7 +524,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
 /* load() helpers. */
 
-
+static bool install_page (void *upage, void *kpage, bool writable);
 
 /* Checks whether PHDR describes a valid, loadable segment in
    FILE and returns true if so, false otherwise. */
@@ -681,7 +659,7 @@ setup_stack (void **esp)
    with palloc_get_page().
    Returns true on success, false if UPAGE is already mapped or
    if memory allocation fails. */
-bool
+static bool
 install_page (void *upage, void *kpage, bool writable)
 {
   struct thread *t = thread_current ();

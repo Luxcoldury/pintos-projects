@@ -5,7 +5,6 @@
 #include <list.h>
 #include <stdint.h>
 #include "synch.h"
-#include "lib/kernel/hash.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -108,12 +107,6 @@ struct thread
     struct file* owner_file;
 #endif
 
-#ifdef VM
-    /* owned by vm/page.c */
-    struct hash spt_hash_table;			  /* hashtable */
-    struct list mmap_descriptor_list;
-    uint8_t *kernel_esp_temp;            // kernel在pagefault时需要暂存esp
-#endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };

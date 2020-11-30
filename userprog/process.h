@@ -2,13 +2,11 @@
 #define USERPROG_PROCESS_H
 
 #include "threads/thread.h"
-#include "lib/user/syscall.h"
 
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
 void process_exit (void);
 void process_activate (void);
-bool install_page (void *upage, void *kpage, bool writable);
 
 typedef tid_t pid_t;
 
@@ -39,15 +37,6 @@ struct file_descriptor{
 
   int fd;                 // nonnegative int fd (0, 1 reserved)
   struct file *file;      // the opened file
-};
-
-struct mmap_descriptor{
-  struct list_elem elem;  // for list operation
-
-  mapid_t md;             // md number (start from 1)
-  struct file *file;      // the opened file
-  void *addr;             // mmap first page
-  size_t size;            // file size
 };
 
 

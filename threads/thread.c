@@ -14,10 +14,6 @@
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
-#ifdef VM
-#include "vm/page.h"
-#endif
-
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -478,11 +474,6 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->child_thread_pcb_list);
   // sema_init(&t->being_waited_by_father_sema,0);
   #endif /* for proj2 */
-
-  #ifdef VM
-  /* Owned by `vm/page.c`. */
-  list_init (&t->mmap_descriptor_list);
-  #endif/* for proj3 */
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
