@@ -1,20 +1,16 @@
 #ifndef VM_SWAP_H
 #define VM_SWAP_H
+/* swap slots/ blocks in global_swap_block */
+#include "devices/block.h"
+#include "lib/kernel/bitmap.h"
+#include "frame.h"
+#include "threads/vaddr.h"
 
-enum block_type{
-	FILE,
-	
-}
-struct block
-{
-	struct list_elem list_elem; /* Element in all_blocks. */
-	char name[16]; 				/* Block device name. */
-	enum block_type type; 		/* Type of block device. */
-	block_sector_t size; 		/* Size in sectors. */
-	const struct block_operations *ops; /* Driver operations. */
-	void *aux;					 /* Extra data owned by driver. */
-	unsigned long long read_cnt; /* Number of sectors read. */
-	unsigned long long write_cnt; /* Number of sectors written. */
-};
+
+/* swap operations */
+void swap_init(void);
+void swap_eviction(struct frame_table_entry* fte);
+void swap_reclamation(struct frame_table_entry* fte, struct sup_page_table_entry* spte);
+void swap_free_pagesized_blocks(size_t swap_index);
 
 #endif/* vm/ swap.h */
