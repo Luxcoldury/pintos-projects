@@ -8,9 +8,8 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Bowen Xu <xubw@shanghaitech.edu.cn>
+Chuyi Zhao <zhaochy1@shanghaitech.edu.cn>
 
 ---- PRELIMINARIES ----
 
@@ -26,8 +25,8 @@ FirstName LastName <email@domain.example>
 
 ---- DATA STRUCTURES ----
 
->> A1: Copy here the declaration of each new or changed `struct' or
->> `struct' member, global or static variable, `typedef', or
+>> A1: Copy here the declaration of each new or changed `struct` or
+>> `struct` member, global or static variable, `typedef`, or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 >> A2: What is the maximum size of a file supported by your inode
@@ -65,8 +64,8 @@ FirstName LastName <email@domain.example>
 
 ---- DATA STRUCTURES ----
 
->> B1: Copy here the declaration of each new or changed `struct' or
->> `struct' member, global or static variable, `typedef', or
+>> B1: Copy here the declaration of each new or changed `struct` or
+>> `struct` member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 ---- ALGORITHMS ----
@@ -96,8 +95,8 @@ FirstName LastName <email@domain.example>
 
 ---- DATA STRUCTURES ----
 
->> C1: Copy here the declaration of each new or changed `struct' or
->> `struct' member, global or static variable, `typedef', or
+>> C1: Copy here the declaration of each new or changed `struct` or
+>> `struct` member, global or static variable, `typedef`, or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 ---- ALGORITHMS ----
