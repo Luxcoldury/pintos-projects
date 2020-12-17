@@ -65,7 +65,7 @@ Chuyi Zhao <zhaochy1@shanghaitech.edu.cn>
 ---- DATA STRUCTURES ----
 
 >> B1: Copy here the declaration of each new or changed `struct` or
->> `struct` member, global or static variable, `typedef', or
+>> `struct` member, global or static variable, `typedef`, or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 ---- ALGORITHMS ----
