@@ -8,8 +8,8 @@
 
 >> Fill in the names and email addresses of your group members.
 
-Bowen Xu <xubw@shanghaitech.edu.cn>
 Chuyi Zhao <zhaochy1@shanghaitech.edu.cn>
+Bowen Xu <xubw@shanghaitech.edu.cn>
 
 ---- PRELIMINARIES ----
 
